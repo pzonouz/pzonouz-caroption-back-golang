@@ -70,7 +70,11 @@ func HttpJsonFromObject[T any](object T, w http.ResponseWriter) {
 	}
 }
 
-func ListFromQueryToResonse[T any](query func() ([]T, error), r *http.Request, w http.ResponseWriter) {
+func ListFromQueryToResonse[T any](
+	query func() ([]T, error),
+	r *http.Request,
+	w http.ResponseWriter,
+) {
 	objects, err := query()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -81,7 +85,28 @@ func ListFromQueryToResonse[T any](query func() ([]T, error), r *http.Request, w
 	HttpJsonFromArray(objects, w)
 }
 
-func ObjectFromQueryToResponse[T any](h func(string) (T, error), r *http.Request, w http.ResponseWriter, id string) {
+func ListFromQueryToResonseById[T any](
+	query func(string) ([]T, error),
+	r *http.Request,
+	w http.ResponseWriter,
+	id string,
+) {
+	objects, err := query(id)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+
+		return
+	}
+
+	HttpJsonFromArray(objects, w)
+}
+
+func ObjectFromQueryToResponse[T any](
+	h func(string) (T, error),
+	r *http.Request,
+	w http.ResponseWriter,
+	id string,
+) {
 	obj, err := h(id)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)

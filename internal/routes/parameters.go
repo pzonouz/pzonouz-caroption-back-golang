@@ -9,39 +9,29 @@ import (
 	"github.com/pzonouz/pzonouz-caroption-back-golang/internal/utils"
 )
 
-func GenerateCategoryRoutes(mainRouter *chi.Mux, service services.Service) {
-	mainRouter.Get("/parent_categories", func(w http.ResponseWriter, r *http.Request) {
-		utils.ListFromQueryToResonse(service.ListParentCategories, r, w)
-	})
-	mainRouter.Get("/products_in_category/{id}", func(w http.ResponseWriter, r *http.Request) {
-		stringId := chi.URLParam(r, "id")
-		utils.ListFromQueryToResonseById(
-			service.ProductsInCategory,
-			r,
-			w,
-			stringId,
-		)
-	})
-
-	mainRouter.Route("/categories", func(router chi.Router) {
-		router.Get("/", func(w http.ResponseWriter, r *http.Request) {
-			utils.ListFromQueryToResonse(service.ListCategories, r, w)
+func GenerateParametersRoutes(mainRouter *chi.Mux, service services.Service) {
+	mainRouter.Route("/parameters", func(router chi.Router) {
+		router.Get("/by-group/{id}", func(w http.ResponseWriter, r *http.Request) {
+			categoryId := chi.URLParam(r, "id")
+			utils.ListFromQueryToResonseById(service.ListParametersByCategory, r, w, categoryId)
 		})
-
+		router.Get("/", func(w http.ResponseWriter, r *http.Request) {
+			utils.ListFromQueryToResonse(service.ListParameters, r, w)
+		})
 		router.Get("/{id}", func(w http.ResponseWriter, r *http.Request) {
 			stringId := chi.URLParam(r, "id")
-			utils.ObjectFromQueryToResponse(service.GetCategory, r, w, stringId)
+			utils.ObjectFromQueryToResponse(service.GetParameter, r, w, stringId)
 		})
 
 		router.Post("/", func(w http.ResponseWriter, r *http.Request) {
-			category, err := utils.DecodeBody[services.Category](r, w)
+			parameter, err := utils.DecodeBody[services.Parameter](r, w)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusBadRequest)
 
 				return
 			}
 
-			err = service.CreateCategory(category)
+			err = service.CreateParameter(parameter)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusBadRequest)
 
@@ -51,14 +41,14 @@ func GenerateCategoryRoutes(mainRouter *chi.Mux, service services.Service) {
 		router.Patch("/{id}", func(w http.ResponseWriter, r *http.Request) {
 			id := chi.URLParam(r, "id")
 
-			category, err := utils.DecodeBody[services.Category](r, w)
+			parameter, err := utils.DecodeBody[services.Parameter](r, w)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusBadRequest)
 
 				return
 			}
 
-			err = service.EditCategory(id, category)
+			err = service.EditParameter(id, parameter)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusBadRequest)
 
@@ -68,7 +58,7 @@ func GenerateCategoryRoutes(mainRouter *chi.Mux, service services.Service) {
 		router.Delete("/{id}", func(w http.ResponseWriter, r *http.Request) {
 			id := chi.URLParam(r, "id")
 
-			err := service.DeleteCategory(id)
+			err := service.DeleteParameter(id)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusBadRequest)
 			}

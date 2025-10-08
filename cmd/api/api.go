@@ -35,6 +35,8 @@ func (app *application) mount() *chi.Mux {
 	routes.GenerateProductRoutes(router, service)
 	routes.GenerateBrandRoutes(router, service)
 	routes.GenerateImageRoutes(router, service)
+	routes.GenerateParameterGroupsRoutes(router, service)
+	routes.GenerateParametersRoutes(router, service)
 	router.Post("/upload-file", func(w http.ResponseWriter, r *http.Request) {
 		_ = utils.Uploader(w, r)
 	})
@@ -46,7 +48,10 @@ func (app *application) initDB() {
 	databasePassword := os.Getenv("DATABASE_PASSWORD")
 	databaseName := os.Getenv("DATABASE_DBNAME")
 
-	conn, err := pgxpool.New(context.Background(), "postgres://root:"+databasePassword+"@localhost:5432/"+databaseName)
+	conn, err := pgxpool.New(
+		context.Background(),
+		"postgres://root:"+databasePassword+"@localhost:5432/"+databaseName,
+	)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Unable to connect to database: %v\n", err)
 		os.Exit(1)

@@ -7,9 +7,13 @@ import (
 )
 
 type Child struct {
-	ID        pgtype.UUID `json:"id"`
-	Name      string      `json:"name,omitempty"`
-	CreatedAt time.Time   `json:"createdAt"`
+	ID          pgtype.UUID `json:"id"`
+	Name        string      `json:"name,omitempty"`
+	ParentID    pgtype.UUID `json:"parentId"`
+	ParentName  pgtype.Text `json:"parentName"`
+	Description pgtype.Text `json:"description"`
+	Prioirity   pgtype.Text `json:"prioirity"`
+	CreatedAt   time.Time   `json:"createdAt"`
 }
 
 type Category struct {
@@ -19,6 +23,8 @@ type Category struct {
 	ParentName  pgtype.Text `json:"parentName"`
 	Description pgtype.Text `json:"description"`
 	Prioirity   pgtype.Text `json:"prioirity"`
+	ImageID     pgtype.UUID `json:"imageId"`
+	ImageUrl    pgtype.Text `json:"imageUrl"`
 	Children    []Child     `json:"children"`
 	CreatedAt   time.Time   `json:"createdAt"`
 }
@@ -33,19 +39,21 @@ type Image struct {
 }
 
 type Product struct {
-	ID          pgtype.UUID   `json:"id"`
-	Name        string        `json:"name"`
-	Description pgtype.Text   `json:"description"`
-	Info        pgtype.Text   `json:"info"`
-	Price       pgtype.Text   `json:"price"`
-	Count       pgtype.Text   `json:"count"`
-	CategoryID  pgtype.UUID   `json:"categoryId"`
-	BrandID     pgtype.UUID   `json:"brandId"`
-	ImageID     pgtype.UUID   `json:"imageId"`
-	ImageIDs    []pgtype.UUID `json:"imageIds"`
-	Images      []Image       `json:"images"`
-	ImageUrl    pgtype.Text   `json:"imageUrl"`
-	CreatedAt   time.Time     `json:"createdAt"`
+	ID                     pgtype.UUID             `json:"id"`
+	Name                   string                  `json:"name"`
+	Description            pgtype.Text             `json:"description"`
+	Info                   pgtype.Text             `json:"info"`
+	Price                  pgtype.Text             `json:"price"`
+	Count                  pgtype.Text             `json:"count"`
+	CategoryID             pgtype.UUID             `json:"categoryId"`
+	BrandID                pgtype.UUID             `json:"brandId"`
+	BrandName              pgtype.Text             `json:"brandName"`
+	ImageID                pgtype.UUID             `json:"imageId"`
+	ImageIDs               []pgtype.UUID           `json:"imageIds"`
+	Images                 []any                   `json:"images"`
+	ImageUrl               pgtype.Text             `json:"imageUrl"`
+	ProductParameterValues []ProductParameterValue `json:"productParameterValues"`
+	CreatedAt              time.Time               `json:"createdAt"`
 }
 
 type Brand struct {
@@ -53,4 +61,32 @@ type Brand struct {
 	Name        string      `json:"name"`
 	Description pgtype.Text `json:"description"`
 	CreatedAt   time.Time   `json:"createdAt"`
+}
+
+type ParameterGroup struct {
+	ID           pgtype.UUID `json:"id"`
+	Name         string      `json:"name"`
+	CategoryId   pgtype.UUID `json:"categoryId"`
+	CategoryName pgtype.Text `json:"categoryName"`
+	CreatedAt    time.Time   `json:"createdAt"`
+}
+
+type Parameter struct {
+	ID               pgtype.UUID   `json:"id"`
+	Name             string        `json:"name"`
+	Description      pgtype.Text   `json:"description"`
+	Type             pgtype.Text   `json:"type"`
+	ParameterGroupId pgtype.UUID   `json:"parameterGroupId"`
+	Selectables      []pgtype.Text `json:"selectables"`
+	CreatedAt        time.Time     `json:"createdAt"`
+}
+
+type ProductParameterValue struct {
+	ID              pgtype.UUID `json:"id"`
+	ProductID       pgtype.UUID `json:"productId"`
+	ParameterId     pgtype.UUID `json:"parameterId"`
+	TextValue       pgtype.Text `json:"textValue"`
+	BoolValue       pgtype.Bool `json:"boolValue"`
+	SelectableValue pgtype.Text `json:"selectableValue"`
+	CreatedAt       time.Time   `json:"createdAt"`
 }

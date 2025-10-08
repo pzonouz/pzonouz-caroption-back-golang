@@ -13,6 +13,8 @@ migrate-up:
 migrate-down:
 	migrate -path ./internal/db/migrations -database postgres://root:secret@localhost:5432/caroption_go?sslmode=disable down
 
+migrate-fix:
+	migrate -path ./internal/db/migrations -database postgres://root:secret@localhost:5432/caroption_go?sslmode=disable force 1
 
 test:
 	go test **/**
