@@ -97,25 +97,83 @@ func (s *Service) GetProduct(id string) (Product, error) {
 		return product, err
 	}
 
+	// 	query := `
+	//    	SELECT
+	//     p.id,
+	//     p.name,
+	//     p.description,
+	//     p.info,
+	//     p.price,
+	//     p.count,
+	//     p.category_id,
+	//     p.brand_id,
+	// 		b.name,
+	//     p.created_at,
+	//     p.image_id,
+	//     i.image_url,
+	//     COALESCE(img_agg.image_ids, ARRAY[]::uuid[]) AS image_ids,
+	//     COALESCE(img_agg.images, '[]'::json) AS images,
+	//     COALESCE(ppv_agg.product_parameter_values, '[]'::json) AS product_parameter_values
+	// FROM products p
+	// LEFT JOIN images i ON p.image_id = i.id
+	// LEFT JOIN brands b ON p.brand_id = b.id
+	// LEFT JOIN categories c ON p.category_id = c.id
+	//
+	// -- Aggregate images separately
+	// LEFT JOIN (
+	//     SELECT
+	//         product_id,
+	//         array_agg(id) AS image_ids,
+	//         json_agg(json_build_object('id', id, 'imageUrl', image_url, 'name', name)) AS images
+	//     FROM images
+	//     WHERE product_id IS NOT NULL
+	//     GROUP BY product_id
+	// ) img_agg ON img_agg.product_id = p.id
+	//
+	// -- Aggregate product parameter values separately
+	// LEFT JOIN (
+	//     SELECT
+	//         product_id,
+	//         json_agg(json_build_object(
+	//             'id', id,
+	//             'productId', product_id,
+	//             'parameterId', parameter_id,
+	//             'boolValue', bool_value,
+	//             'textValue', text_value,
+	//             'selectableValue', selectable_value,
+	//             'createdAt', created_at
+	//         )) AS product_parameter_values
+	//     FROM product_parameter_values
+	//     GROUP BY product_id
+	// ) ppv_agg ON ppv_agg.product_id = p.id WHERE p.id = $1;
+	// 	`
 	query := `
-   	SELECT
+	   	SELECT
     p.id,
     p.name,
     p.description,
+		p_agg.parameters,
     p.info,
     p.price,
     p.count,
     p.category_id,
     p.brand_id,
+	b.name,
     p.created_at,
     p.image_id,
     i.image_url,
     COALESCE(img_agg.image_ids, ARRAY[]::uuid[]) AS image_ids,
     COALESCE(img_agg.images, '[]'::json) AS images,
     COALESCE(ppv_agg.product_parameter_values, '[]'::json) AS product_parameter_values
-FROM
-    products p
+FROM products p
 LEFT JOIN images i ON p.image_id = i.id
+LEFT JOIN brands b ON p.brand_id = b.id
+
+-- Aggregate parameter groups separately
+LEFT JOIN (
+    SELECT * FROM parameter_groups
+    GROUP BY parameter_groups.id
+) pg_agg ON true
 
 -- Aggregate images separately
 LEFT JOIN (
@@ -143,7 +201,24 @@ LEFT JOIN (
         )) AS product_parameter_values
     FROM product_parameter_values
     GROUP BY product_id
-) ppv_agg ON ppv_agg.product_id = p.id WHERE p.id = $1;
+) ppv_agg ON ppv_agg.product_id = p.id 
+
+-- Aggregate parameters separately
+LEFT JOIN (
+    SELECT
+        parameter_group_id,
+        json_agg(json_build_object(
+            'id', id,
+            'name', name,
+            'description', description,
+            'type', type,
+            'selectables', selectables,
+            'createdAt', created_at
+        )) AS parameters
+    FROM parameters
+    GROUP BY parameter_group_id
+) p_agg ON p_agg.parameter_group_id = pg_agg.id 
+WHERE p.id = $1;
 	`
 	row := s.db.QueryRow(context.Background(), query, parsedUUID)
 
@@ -153,6 +228,7 @@ LEFT JOIN (
 		&product.ID,
 		&product.Name,
 		&product.Description,
+		&product.Parameters,
 		&product.Info,
 		&product.Price,
 		&product.Count,
@@ -163,6 +239,7 @@ LEFT JOIN (
 		&product.ImageID,
 		&product.ImageUrl,
 		&product.ImageIDs,
+		&product.Images,
 		&productParameterValuesJSON,
 	)
 	if len(productParameterValuesJSON) > 0 {

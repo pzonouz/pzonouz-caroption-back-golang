@@ -52,6 +52,7 @@ type Product struct {
 	ImageIDs               []pgtype.UUID           `json:"imageIds"`
 	Images                 []any                   `json:"images"`
 	ImageUrl               pgtype.Text             `json:"imageUrl"`
+	Parameters             []Parameter             `json:"parameters"`
 	ProductParameterValues []ProductParameterValue `json:"productParameterValues"`
 	CreatedAt              time.Time               `json:"createdAt"`
 }
