@@ -20,6 +20,7 @@ linters:
     - tagalign
     - lll
     - gochecknoglobals
+    - forcetypeassert
 # formatters:
 #   option: value
 # issues:

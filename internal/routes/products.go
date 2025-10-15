@@ -7,10 +7,11 @@ import (
 
 	"github.com/pzonouz/pzonouz-caroption-back-golang/internal/services"
 	"github.com/pzonouz/pzonouz-caroption-back-golang/internal/utils"
+	"github.com/pzonouz/pzonouz-caroption-back-golang/middlewares"
 )
 
 func GenerateProductRoutes(mainRouter *chi.Mux, service services.Service) {
-	mainRouter.Route("/products", func(router chi.Router) {
+	mainRouter.With(middlewares.AdminOrReadOnly).Route("/products", func(router chi.Router) {
 		router.Get("/", func(w http.ResponseWriter, r *http.Request) {
 			utils.ListFromQueryToResonse(service.ListProducts, r, w)
 		})

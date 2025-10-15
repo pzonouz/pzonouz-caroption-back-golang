@@ -37,6 +37,7 @@ func (app *application) mount() *chi.Mux {
 	routes.GenerateImageRoutes(router, service)
 	routes.GenerateParameterGroupsRoutes(router, service)
 	routes.GenerateParametersRoutes(router, service)
+	routes.GenerateAuthRoutes(router, service)
 	router.Post("/upload-file", func(w http.ResponseWriter, r *http.Request) {
 		_ = utils.Uploader(w, r)
 	})

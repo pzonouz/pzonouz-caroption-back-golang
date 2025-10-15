@@ -10,6 +10,8 @@ import (
 	"path/filepath"
 	"reflect"
 	"strings"
+
+	"github.com/golang-jwt/jwt/v5"
 )
 
 const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
@@ -169,4 +171,46 @@ func Uploader(w http.ResponseWriter, r *http.Request) error {
 	fmt.Fprint(w, strings.Split(fileName, "/")[2])
 
 	return nil
+}
+
+func GetUserFromRequest(w http.ResponseWriter, r *http.Request) User {
+	AuthHeader := r.Header.Get("Authorization")
+	if AuthHeader == "" {
+		http.Error(w, "Missing Authorization header", http.StatusUnauthorized)
+
+		return User{}
+	}
+
+	parts := strings.Split(AuthHeader, " ")
+	if len(parts) != 2 {
+		http.Error(w, "Invalid Authorization header format", http.StatusUnauthorized)
+
+		return User{}
+	}
+
+	tokenString := parts[1]
+
+	claims := &AuthClaims{}
+
+	token, err := jwt.ParseWithClaims(
+		tokenString,
+		claims,
+		func(token *jwt.Token) (any, error) {
+			return []byte(os.Getenv("SECRET")), nil
+		},
+		jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Alg()}),
+	)
+	if err != nil || !token.Valid {
+		http.Error(w, "Invalid token", http.StatusUnauthorized)
+
+		return User{}
+	}
+
+	user := &User{
+		ID:      claims.ID,
+		Email:   claims.Email,
+		IsAdmin: claims.IsAdmin,
+	}
+
+	return *user
 }

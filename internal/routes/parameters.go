@@ -7,10 +7,11 @@ import (
 
 	"github.com/pzonouz/pzonouz-caroption-back-golang/internal/services"
 	"github.com/pzonouz/pzonouz-caroption-back-golang/internal/utils"
+	"github.com/pzonouz/pzonouz-caroption-back-golang/middlewares"
 )
 
 func GenerateParametersRoutes(mainRouter *chi.Mux, service services.Service) {
-	mainRouter.Route("/parameters", func(router chi.Router) {
+	mainRouter.With(middlewares.AdminOrReadOnly).Route("/parameters", func(router chi.Router) {
 		router.Get("/by-group/{id}", func(w http.ResponseWriter, r *http.Request) {
 			categoryId := chi.URLParam(r, "id")
 			utils.ListFromQueryToResonseById(service.ListParametersByCategory, r, w, categoryId)

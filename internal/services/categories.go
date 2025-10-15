@@ -19,6 +19,7 @@ func (s *Service) ListParentCategories() ([]Category, error) {
 		i.image_url,
 		p.image_id,
     p.created_at,
+	  p.updated_at,	
     COALESCE(
         json_agg(
             json_build_object(
@@ -45,7 +46,7 @@ GROUP BY p.id, p.name, p.parent_id, p.created_at,i.image_url ORDER BY p.prioirit
 
 	for rows.Next() {
 		var category Category
-		if err := rows.Scan(&category.ID, &category.Name, &category.ParentID, &category.Description, &category.Prioirity, &category.ImageUrl, &category.ImageID, &category.CreatedAt, &category.Children); err != nil {
+		if err := rows.Scan(&category.ID, &category.Name, &category.ParentID, &category.Description, &category.Prioirity, &category.ImageUrl, &category.ImageID, &category.CreatedAt, &category.UpdatedAt, &category.Children); err != nil {
 			return []Category{}, err
 		}
 
@@ -69,7 +70,8 @@ func (s *Service) ListCategories() ([]Category, error) {
     c.prioirity,
 		c.image_id,
 		i.image_url,
-    c.created_at
+    c.created_at,
+	  c.updated_at
 FROM
     categories AS c
     LEFT JOIN categories p ON c.parent_id = p.id
@@ -90,7 +92,7 @@ GROUP BY
 
 	for rows.Next() {
 		var category Category
-		if err := rows.Scan(&category.ID, &category.Name, &category.ParentID, &category.ParentName, &category.Description, &category.Prioirity, &category.ImageID, &category.ImageUrl, &category.CreatedAt); err != nil {
+		if err := rows.Scan(&category.ID, &category.Name, &category.ParentID, &category.ParentName, &category.Description, &category.Prioirity, &category.ImageID, &category.ImageUrl, &category.CreatedAt, &category.UpdatedAt); err != nil {
 			return []Category{}, err
 		}
 
@@ -110,7 +112,7 @@ func (s *Service) GetCategory(id string) (Category, error) {
 		return category, err
 	}
 
-	query := "SELECT id,name,parent_id,description,prioirity,image_id,created_at FROM categories WHERE id=$1"
+	query := "SELECT id,name,parent_id,description,prioirity,image_id,created_at,updated_at FROM categories WHERE id=$1"
 	row := s.db.QueryRow(context.Background(), query, parsedUUID)
 
 	err = row.Scan(
@@ -121,6 +123,7 @@ func (s *Service) GetCategory(id string) (Category, error) {
 		&category.Prioirity,
 		&category.ImageID,
 		&category.CreatedAt,
+		&category.UpdatedAt,
 	)
 	if err != nil {
 		return category, err
@@ -159,7 +162,7 @@ func (s *Service) CreateCategory(category Category) error {
 }
 
 func (s *Service) EditCategory(id string, category Category) error {
-	query := "UPDATE categories SET name=$1,parent_id=$2,image_id=$3 WHERE id=$4;"
+	query := "UPDATE categories SET name=$1,parent_id=$2,image_id=$3,prioirity=$4 WHERE id=$5;"
 	validate := utils.NewValidate()
 
 	err := validate.Struct(category)
@@ -173,6 +176,7 @@ func (s *Service) EditCategory(id string, category Category) error {
 		category.Name,
 		category.ParentID,
 		category.ImageID,
+		category.Prioirity,
 		id,
 	)
 	if err != nil {

@@ -23,6 +23,7 @@ func GenerateCategoryRoutes(mainRouter *chi.Mux, service services.Service) {
 		)
 	})
 
+	// mainRouter.With(middlewares.AdminOrReadOnly).Route("/categories", func(router chi.Router) {
 	mainRouter.Route("/categories", func(router chi.Router) {
 		router.Get("/", func(w http.ResponseWriter, r *http.Request) {
 			utils.ListFromQueryToResonse(service.ListCategories, r, w)
@@ -48,6 +49,7 @@ func GenerateCategoryRoutes(mainRouter *chi.Mux, service services.Service) {
 				return
 			}
 		})
+
 		router.Patch("/{id}", func(w http.ResponseWriter, r *http.Request) {
 			id := chi.URLParam(r, "id")
 

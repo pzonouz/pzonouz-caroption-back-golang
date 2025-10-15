@@ -27,6 +27,7 @@ type Category struct {
 	ImageUrl    pgtype.Text `json:"imageUrl"`
 	Children    []Child     `json:"children"`
 	CreatedAt   time.Time   `json:"createdAt"`
+	UpdatedAt   time.Time   `json:"updatedAt"`
 }
 
 type Image struct {
@@ -55,6 +56,7 @@ type Product struct {
 	Parameters             []Parameter             `json:"parameters"`
 	ProductParameterValues []ProductParameterValue `json:"productParameterValues"`
 	CreatedAt              time.Time               `json:"createdAt"`
+	UpdatedAt              time.Time               `json:"updatedAt"`
 }
 
 type Brand struct {
@@ -90,4 +92,12 @@ type ProductParameterValue struct {
 	BoolValue       pgtype.Bool `json:"boolValue"`
 	SelectableValue pgtype.Text `json:"selectableValue"`
 	CreatedAt       time.Time   `json:"createdAt"`
+}
+
+type User struct {
+	ID        pgtype.UUID `json:"id"`
+	Password  pgtype.Text `json:"password"`
+	Email     pgtype.Text `json:"email"`
+	IsAdmin   bool        `json:"isAdmin"`
+	CreatedAt time.Time   `json:"createdAt"`
 }

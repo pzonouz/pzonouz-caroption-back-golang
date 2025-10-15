@@ -7,10 +7,11 @@ import (
 
 	"github.com/pzonouz/pzonouz-caroption-back-golang/internal/services"
 	"github.com/pzonouz/pzonouz-caroption-back-golang/internal/utils"
+	"github.com/pzonouz/pzonouz-caroption-back-golang/middlewares"
 )
 
 func GenerateImageRoutes(mainRouter *chi.Mux, service services.Service) {
-	mainRouter.Route("/images", func(router chi.Router) {
+	mainRouter.With(middlewares.AdminOrReadOnly).Route("/images", func(router chi.Router) {
 		router.Get("/", func(w http.ResponseWriter, r *http.Request) {
 			utils.ListFromQueryToResonse(service.ListImages, r, w)
 		})

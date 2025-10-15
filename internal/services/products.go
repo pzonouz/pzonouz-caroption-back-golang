@@ -21,6 +21,7 @@ func (s *Service) ListProducts() ([]Product, error) {
     p.category_id,
     p.brand_id,
     p.created_at,
+	  p.updated_at,
     p.image_id,
     i.image_url,
     COALESCE(img_agg.image_ids, ARRAY[]::uuid[]) AS image_ids,
@@ -72,7 +73,7 @@ LEFT JOIN (
 
 		var productParameterValuesJSON []byte
 
-		if err := rows.Scan(&product.ID, &product.Name, &product.Description, &product.Info, &product.Price, &product.Count, &product.CategoryID, &product.BrandID, &product.CreatedAt, &product.ImageID, &product.ImageUrl, &product.ImageIDs, &product.Images, &productParameterValuesJSON); err != nil {
+		if err := rows.Scan(&product.ID, &product.Name, &product.Description, &product.Info, &product.Price, &product.Count, &product.CategoryID, &product.BrandID, &product.CreatedAt, &product.UpdatedAt, &product.ImageID, &product.ImageUrl, &product.ImageIDs, &product.Images, &productParameterValuesJSON); err != nil {
 			return []Product{}, err
 		}
 
@@ -97,56 +98,6 @@ func (s *Service) GetProduct(id string) (Product, error) {
 		return product, err
 	}
 
-	// 	query := `
-	//    	SELECT
-	//     p.id,
-	//     p.name,
-	//     p.description,
-	//     p.info,
-	//     p.price,
-	//     p.count,
-	//     p.category_id,
-	//     p.brand_id,
-	// 		b.name,
-	//     p.created_at,
-	//     p.image_id,
-	//     i.image_url,
-	//     COALESCE(img_agg.image_ids, ARRAY[]::uuid[]) AS image_ids,
-	//     COALESCE(img_agg.images, '[]'::json) AS images,
-	//     COALESCE(ppv_agg.product_parameter_values, '[]'::json) AS product_parameter_values
-	// FROM products p
-	// LEFT JOIN images i ON p.image_id = i.id
-	// LEFT JOIN brands b ON p.brand_id = b.id
-	// LEFT JOIN categories c ON p.category_id = c.id
-	//
-	// -- Aggregate images separately
-	// LEFT JOIN (
-	//     SELECT
-	//         product_id,
-	//         array_agg(id) AS image_ids,
-	//         json_agg(json_build_object('id', id, 'imageUrl', image_url, 'name', name)) AS images
-	//     FROM images
-	//     WHERE product_id IS NOT NULL
-	//     GROUP BY product_id
-	// ) img_agg ON img_agg.product_id = p.id
-	//
-	// -- Aggregate product parameter values separately
-	// LEFT JOIN (
-	//     SELECT
-	//         product_id,
-	//         json_agg(json_build_object(
-	//             'id', id,
-	//             'productId', product_id,
-	//             'parameterId', parameter_id,
-	//             'boolValue', bool_value,
-	//             'textValue', text_value,
-	//             'selectableValue', selectable_value,
-	//             'createdAt', created_at
-	//         )) AS product_parameter_values
-	//     FROM product_parameter_values
-	//     GROUP BY product_id
-	// ) ppv_agg ON ppv_agg.product_id = p.id WHERE p.id = $1;
-	// 	`
 	query := `
 	   	SELECT
     p.id,
@@ -158,8 +109,9 @@ func (s *Service) GetProduct(id string) (Product, error) {
     p.count,
     p.category_id,
     p.brand_id,
-	b.name,
+	  b.name,
     p.created_at,
+	  p.updated_at,
     p.image_id,
     i.image_url,
     COALESCE(img_agg.image_ids, ARRAY[]::uuid[]) AS image_ids,
@@ -236,6 +188,7 @@ WHERE p.id = $1;
 		&product.BrandID,
 		&product.BrandName,
 		&product.CreatedAt,
+		&product.UpdatedAt,
 		&product.ImageID,
 		&product.ImageUrl,
 		&product.ImageIDs,
@@ -366,11 +319,35 @@ func (s *Service) EditProduct(id string, product Product) error {
 	}
 
 	for _, ppv := range product.ProductParameterValues {
+		ppvId := uuid.New()
+
 		_, err = tx.Exec(
 			context.Background(),
-			`UPDATE product_parameter_values SET product_id=$2,parameter_id=$3,bool_value=$4,text_value=$5,selectable_value=$6 WHERE id=$1`,
-			ppv.ID,
-			ppv.ProductID,
+			`
+			INSERT INTO product_parameter_values (
+					id,
+					product_id,
+					parameter_id,
+					bool_value,
+					text_value,
+					selectable_value
+			)
+			VALUES (
+					$1,  -- id
+					$2,  -- product_id
+					$3,  -- parameter_id
+					$4,  -- bool_value
+					$5,  -- text_value
+					$6   -- selectable_value
+			)
+			ON CONFLICT (parameter_id, product_id)
+			DO UPDATE SET
+					bool_value = EXCLUDED.bool_value,
+					text_value = EXCLUDED.text_value,
+					selectable_value = EXCLUDED.selectable_value;
+			`,
+			ppvId,
+			id,
 			ppv.ParameterId,
 			ppv.BoolValue,
 			ppv.TextValue,
