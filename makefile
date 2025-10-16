@@ -18,7 +18,13 @@ migrate-fix:
 
 
 start-pgadmin:
-	docker run -d --rm --name pgadmin4 -e PGADMIN_DEFAULT_EMAIL=${PGADMIN_DEFAULT_EMAIL} 	-e PGADMIN_DEFAULT_PASSWORD=${PGADMIN_DEFAULT_PASSWORD}	 -p 5050:80 	dpage/pgadmin4
+	docker run -d --rm \
+  --name pgadmin4 \
+  -e PGADMIN_DEFAULT_EMAIL=${PGADMIN_DEFAULT_EMAIL} \
+  -e PGADMIN_DEFAULT_PASSWORD=${PGADMIN_DEFAULT_PASSWORD} \
+  -e SCRIPT_NAME=/pgadmin \
+  -p 5050:80 \
+  dpage/pgadmin4
 
 stop-pgadmin:
 	docker stop pgadmin4
