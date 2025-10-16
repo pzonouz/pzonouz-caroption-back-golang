@@ -22,7 +22,6 @@ start-pgadmin:
   --name pgadmin4 \
   -e PGADMIN_DEFAULT_EMAIL=${PGADMIN_DEFAULT_EMAIL} \
   -e PGADMIN_DEFAULT_PASSWORD=${PGADMIN_DEFAULT_PASSWORD} \
-  -e SCRIPT_NAME=/pgadmin \
   -p 5050:80 \
   dpage/pgadmin4
 
