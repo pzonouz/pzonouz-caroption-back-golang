@@ -57,7 +57,7 @@ CREATE TABLE "parameters" (
     "type" varchar,
     "parameter_group_id" uuid,
     "selectables" varchar[],
-    "prioirity" varchar,
+    "prioirity" varchar DEFAULT ("10000000"),
     "created_at" timestamptz DEFAULT (now()),
     PRIMARY KEY ("id")
 );

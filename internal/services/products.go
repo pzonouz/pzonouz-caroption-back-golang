@@ -168,7 +168,7 @@ LEFT JOIN (
 						'priority' , priority,
             'createdAt', created_at
         )
-			ORDER BY priority
+				ORDER BY priority::int
 ) AS parameters
     FROM parameters
     GROUP BY parameter_group_id
