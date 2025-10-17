@@ -165,9 +165,11 @@ LEFT JOIN (
             'description', description,
             'type', type,
             'selectables', selectables,
+						'priority' , priority,
             'createdAt', created_at
         )) AS parameters
     FROM parameters
+		ORDER BY priority
     GROUP BY parameter_group_id
 ) p_agg ON p_agg.parameter_group_id = pg_agg.id 
 WHERE p.id = $1;
