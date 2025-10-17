@@ -25,6 +25,7 @@ type Category struct {
 	Prioirity   pgtype.Text `json:"prioirity"`
 	ImageID     pgtype.UUID `json:"imageId"`
 	ImageUrl    pgtype.Text `json:"imageUrl"`
+	Show        bool        `json:"show"`
 	Children    []Child     `json:"children"`
 	CreatedAt   time.Time   `json:"createdAt"`
 	UpdatedAt   time.Time   `json:"updatedAt"`

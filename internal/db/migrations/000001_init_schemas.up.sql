@@ -5,6 +5,7 @@ CREATE TABLE "categories" (
     "image_id" uuid,
     "prioirity" varchar,
     "parent_id" uuid,
+    "show" boolean,
     "created_at" timestamptz DEFAULT (now()),
     PRIMARY KEY ("id")
 );
