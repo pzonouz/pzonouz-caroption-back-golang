@@ -82,6 +82,7 @@ type Parameter struct {
 	Type             pgtype.Text   `json:"type"`
 	ParameterGroupId pgtype.UUID   `json:"parameterGroupId"`
 	Selectables      []pgtype.Text `json:"selectables"`
+	Priority         pgtype.Text   `json:"priority"`
 	CreatedAt        time.Time     `json:"createdAt"`
 }
 

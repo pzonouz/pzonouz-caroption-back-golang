@@ -55,7 +55,7 @@ LEFT JOIN (
             'selectableValue', selectable_value,
             'createdAt', created_at
         )) AS product_parameter_values
-    FROM product_parameter_values
+    FROM product_parameter_values 
     GROUP BY product_id
 ) ppv_agg ON ppv_agg.product_id = p.id;
 `
