@@ -27,6 +27,7 @@ type Category struct {
 	ImageUrl    pgtype.Text `json:"imageUrl"`
 	Show        bool        `json:"show"`
 	Children    []Child     `json:"children"`
+	Slug        pgtype.Text `json:"slug"`
 	CreatedAt   time.Time   `json:"createdAt"`
 	UpdatedAt   time.Time   `json:"updatedAt"`
 }
@@ -40,6 +41,19 @@ type Image struct {
 	CreatedAt  time.Time   `json:"createdAt"`
 }
 
+type Article struct {
+	ID          pgtype.UUID   `json:"id"`
+	Name        pgtype.Text   `json:"name"`
+	Description pgtype.Text   `json:"description"`
+	ImageID     pgtype.UUID   `json:"imageId"`
+	ImageUrl    pgtype.Text   `json:"imageUrl"`
+	Slug        pgtype.Text   `json:"slug"`
+	Keywords    []pgtype.Text `json:"keywords"`
+	CategoryID  pgtype.UUID   `json:"categoryId"`
+	CreatedAt   time.Time     `json:"createdAt"`
+	UpdatedAt   time.Time     `json:"updatedAt"`
+}
+
 type Product struct {
 	ID                     pgtype.UUID             `json:"id"`
 	Name                   string                  `json:"name"`
@@ -50,12 +64,14 @@ type Product struct {
 	CategoryID             pgtype.UUID             `json:"categoryId"`
 	BrandID                pgtype.UUID             `json:"brandId"`
 	BrandName              pgtype.Text             `json:"brandName"`
+	Slug                   pgtype.Text             `json:"slug"`
 	ImageID                pgtype.UUID             `json:"imageId"`
 	ImageIDs               []pgtype.UUID           `json:"imageIds"`
 	Images                 []any                   `json:"images"`
 	ImageUrl               pgtype.Text             `json:"imageUrl"`
 	Parameters             []Parameter             `json:"parameters"`
 	ProductParameterValues []ProductParameterValue `json:"productParameterValues"`
+	Keywords               []pgtype.Text           `json:"keywords"`
 	CreatedAt              time.Time               `json:"createdAt"`
 	UpdatedAt              time.Time               `json:"updatedAt"`
 }

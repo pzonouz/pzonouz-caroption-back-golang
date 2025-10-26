@@ -11,8 +11,8 @@ import (
 	"github.com/pzonouz/pzonouz-caroption-back-golang/middlewares"
 )
 
-func GenerateProductRoutes(mainRouter *chi.Mux, service services.Service) {
-	mainRouter.Get("/product_by_slug/search", func(w http.ResponseWriter, r *http.Request) {
+func GenerateArticleRoutes(mainRouter *chi.Mux, service services.Service) {
+	mainRouter.Get("/article_by_slug/search", func(w http.ResponseWriter, r *http.Request) {
 		query := r.URL.Query().Get("q")
 
 		slug, err := url.QueryUnescape(query)
@@ -20,27 +20,27 @@ func GenerateProductRoutes(mainRouter *chi.Mux, service services.Service) {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 
-		utils.ObjectFromQueryToResponse(service.GetProductBySlug, r, w, slug)
+		utils.ObjectFromQueryToResponse(service.GetArticleBySlug, r, w, slug)
 	})
-	mainRouter.With(middlewares.AdminOrReadOnly).Route("/products", func(router chi.Router) {
+	mainRouter.With(middlewares.AdminOrReadOnly).Route("/articles", func(router chi.Router) {
 		router.Get("/", func(w http.ResponseWriter, r *http.Request) {
-			utils.ListFromQueryToResonse(service.ListProducts, r, w)
+			utils.ListFromQueryToResonse(service.ListArticles, r, w)
 		})
 
 		router.Get("/{id}", func(w http.ResponseWriter, r *http.Request) {
 			id := chi.URLParam(r, "id")
-			utils.ObjectFromQueryToResponse(service.GetProduct, r, w, id)
+			utils.ObjectFromQueryToResponse(service.GetArticle, r, w, id)
 		})
 
 		router.Post("/", func(w http.ResponseWriter, r *http.Request) {
-			product, err := utils.DecodeBody[services.Product](r, w)
+			article, err := utils.DecodeBody[services.Article](r, w)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusBadRequest)
 
 				return
 			}
 
-			err = service.CreateProduct(product)
+			err = service.CreateArticle(article)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusBadRequest)
 
@@ -50,14 +50,14 @@ func GenerateProductRoutes(mainRouter *chi.Mux, service services.Service) {
 		router.Patch("/{id}", func(w http.ResponseWriter, r *http.Request) {
 			id := chi.URLParam(r, "id")
 
-			product, err := utils.DecodeBody[services.Product](r, w)
+			article, err := utils.DecodeBody[services.Article](r, w)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusBadRequest)
 
 				return
 			}
 
-			err = service.EditProduct(id, product)
+			err = service.EditArticle(id, article)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusBadRequest)
 
@@ -67,7 +67,7 @@ func GenerateProductRoutes(mainRouter *chi.Mux, service services.Service) {
 		router.Delete("/{id}", func(w http.ResponseWriter, r *http.Request) {
 			id := chi.URLParam(r, "id")
 
-			err := service.DeleteProduct(id)
+			err := service.DeleteArticle(id)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusBadRequest)
 			}

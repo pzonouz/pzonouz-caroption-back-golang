@@ -2,7 +2,6 @@ package services
 
 import (
 	"context"
-	"log"
 
 	"github.com/google/uuid"
 
@@ -18,6 +17,7 @@ func (s *Service) ListParentCategories() ([]Category, error) {
 		p.prioirity,
 		i.image_url,
 		p.image_id,
+		p.slug,
 	  p.show,
     p.created_at,
 	  p.updated_at,	
@@ -47,7 +47,7 @@ GROUP BY p.id, p.name, p.parent_id, p.created_at,i.image_url ORDER BY p.prioirit
 
 	for rows.Next() {
 		var category Category
-		if err := rows.Scan(&category.ID, &category.Name, &category.ParentID, &category.Description, &category.Prioirity, &category.ImageUrl, &category.ImageID, &category.Show, &category.CreatedAt, &category.UpdatedAt, &category.Children); err != nil {
+		if err := rows.Scan(&category.ID, &category.Name, &category.ParentID, &category.Description, &category.Prioirity, &category.ImageUrl, &category.ImageID, &category.Slug, &category.Show, &category.CreatedAt, &category.UpdatedAt, &category.Children); err != nil {
 			return []Category{}, err
 		}
 
@@ -71,6 +71,7 @@ func (s *Service) ListCategories() ([]Category, error) {
     c.prioirity,
 		c.image_id,
 		i.image_url,
+		c.slug,
 	  c.show,
     c.created_at,
 	  c.updated_at
@@ -94,7 +95,7 @@ GROUP BY
 
 	for rows.Next() {
 		var category Category
-		if err := rows.Scan(&category.ID, &category.Name, &category.ParentID, &category.ParentName, &category.Description, &category.Prioirity, &category.ImageID, &category.ImageUrl, &category.Show, &category.CreatedAt, &category.UpdatedAt); err != nil {
+		if err := rows.Scan(&category.ID, &category.Name, &category.ParentID, &category.ParentName, &category.Description, &category.Prioirity, &category.ImageID, &category.ImageUrl, &category.Slug, &category.Show, &category.CreatedAt, &category.UpdatedAt); err != nil {
 			return []Category{}, err
 		}
 
@@ -114,7 +115,7 @@ func (s *Service) GetCategory(id string) (Category, error) {
 		return category, err
 	}
 
-	query := "SELECT id,name,parent_id,description,prioirity,image_id,show,created_at,updated_at FROM categories WHERE id=$1"
+	query := "SELECT id,name,parent_id,description,prioirity,image_id,slug,show,created_at,updated_at FROM categories WHERE id=$1"
 	row := s.db.QueryRow(context.Background(), query, parsedUUID)
 
 	err = row.Scan(
@@ -124,6 +125,32 @@ func (s *Service) GetCategory(id string) (Category, error) {
 		&category.Description,
 		&category.Prioirity,
 		&category.ImageID,
+		&category.Slug,
+		&category.Show,
+		&category.CreatedAt,
+		&category.UpdatedAt,
+	)
+	if err != nil {
+		return category, err
+	}
+
+	return category, nil
+}
+
+func (s *Service) GetCategoryBySlug(slug string) (Category, error) {
+	var category Category
+
+	query := "SELECT id,name,parent_id,description,prioirity,image_id,slug,show,created_at,updated_at FROM categories WHERE slug=$1"
+	row := s.db.QueryRow(context.Background(), query, slug)
+
+	err := row.Scan(
+		&category.ID,
+		&category.Name,
+		&category.ParentID,
+		&category.Description,
+		&category.Prioirity,
+		&category.ImageID,
+		&category.Slug,
 		&category.Show,
 		&category.CreatedAt,
 		&category.UpdatedAt,
@@ -136,7 +163,7 @@ func (s *Service) GetCategory(id string) (Category, error) {
 }
 
 func (s *Service) CreateCategory(category Category) error {
-	query := "INSERT INTO categories (id,name,parent_id,description,prioirity,image_id,show) VALUES ($1,$2,$3,$4,$5,$6,$7);"
+	query := "INSERT INTO categories (id,name,parent_id,description,prioirity,image_id,slug,show) VALUES ($1,$2,$3,$4,$5,$6,$7,$8);"
 	validate := utils.NewValidate()
 
 	err := validate.Struct(category)
@@ -145,7 +172,6 @@ func (s *Service) CreateCategory(category Category) error {
 	}
 
 	id := uuid.New()
-	log.Print(id)
 
 	_, err = s.db.Exec(
 		context.Background(),
@@ -156,6 +182,7 @@ func (s *Service) CreateCategory(category Category) error {
 		category.Description,
 		category.Prioirity,
 		category.ImageID,
+		category.Slug,
 		category.Show,
 	)
 	if err != nil {
@@ -166,7 +193,7 @@ func (s *Service) CreateCategory(category Category) error {
 }
 
 func (s *Service) EditCategory(id string, category Category) error {
-	query := "UPDATE categories SET name=$1,parent_id=$2,image_id=$3,prioirity=$4,show=$5 WHERE id=$6;"
+	query := "UPDATE categories SET name=$1,parent_id=$2,image_id=$3,prioirity=$4,slug=$5,show=$6 WHERE id=$7;"
 	validate := utils.NewValidate()
 
 	err := validate.Struct(category)
@@ -181,6 +208,7 @@ func (s *Service) EditCategory(id string, category Category) error {
 		category.ParentID,
 		category.ImageID,
 		category.Prioirity,
+		category.Slug,
 		category.Show,
 		id,
 	)

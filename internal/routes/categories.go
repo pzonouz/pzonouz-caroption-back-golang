@@ -2,6 +2,7 @@ package routes
 
 import (
 	"net/http"
+	"net/url"
 
 	"github.com/go-chi/chi/v5"
 
@@ -12,6 +13,15 @@ import (
 func GenerateCategoryRoutes(mainRouter *chi.Mux, service services.Service) {
 	mainRouter.Get("/parent_categories", func(w http.ResponseWriter, r *http.Request) {
 		utils.ListFromQueryToResonse(service.ListParentCategories, r, w)
+	})
+	mainRouter.Get("/category_by_slug/search", func(w http.ResponseWriter, r *http.Request) {
+		query := r.URL.Query().Get("q")
+
+		slug, err := url.QueryUnescape(query)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+		utils.ObjectFromQueryToResponse(service.GetCategoryBySlug, r, w, slug)
 	})
 	mainRouter.Get("/products_in_category/{id}", func(w http.ResponseWriter, r *http.Request) {
 		stringId := chi.URLParam(r, "id")

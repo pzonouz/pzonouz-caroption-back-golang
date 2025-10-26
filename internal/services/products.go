@@ -20,6 +20,8 @@ func (s *Service) ListProducts() ([]Product, error) {
     p.count,
     p.category_id,
     p.brand_id,
+		p.slug,
+		p.keywords,
     p.created_at,
 	  p.updated_at,
     p.image_id,
@@ -73,7 +75,7 @@ LEFT JOIN (
 
 		var productParameterValuesJSON []byte
 
-		if err := rows.Scan(&product.ID, &product.Name, &product.Description, &product.Info, &product.Price, &product.Count, &product.CategoryID, &product.BrandID, &product.CreatedAt, &product.UpdatedAt, &product.ImageID, &product.ImageUrl, &product.ImageIDs, &product.Images, &productParameterValuesJSON); err != nil {
+		if err := rows.Scan(&product.ID, &product.Name, &product.Description, &product.Info, &product.Price, &product.Count, &product.CategoryID, &product.BrandID, &product.Slug, &product.Keywords, &product.CreatedAt, &product.UpdatedAt, &product.ImageID, &product.ImageUrl, &product.ImageIDs, &product.Images, &productParameterValuesJSON); err != nil {
 			return []Product{}, err
 		}
 
@@ -110,6 +112,8 @@ func (s *Service) GetProduct(id string) (Product, error) {
     p.category_id,
     p.brand_id,
 	  b.name,
+		p.slug,
+		p.keywords,
     p.created_at,
 	  p.updated_at,
     p.image_id,
@@ -190,6 +194,126 @@ WHERE p.id = $1;
 		&product.CategoryID,
 		&product.BrandID,
 		&product.BrandName,
+		&product.Slug,
+		&product.Keywords,
+		&product.CreatedAt,
+		&product.UpdatedAt,
+		&product.ImageID,
+		&product.ImageUrl,
+		&product.ImageIDs,
+		&product.Images,
+		&productParameterValuesJSON,
+	)
+	if len(productParameterValuesJSON) > 0 {
+		_ = json.Unmarshal(productParameterValuesJSON, &product.ProductParameterValues)
+	}
+
+	if err != nil {
+		return product, err
+	}
+
+	return product, nil
+}
+
+func (s *Service) GetProductBySlug(slug string) (Product, error) {
+	var product Product
+
+	query := `
+	   	SELECT
+    p.id,
+    p.name,
+    p.description,
+		p_agg.parameters,
+    p.info,
+    p.price,
+    p.count,
+    p.category_id,
+    p.brand_id,
+	  b.name,
+		p.slug,
+		p.keywords,
+    p.created_at,
+	  p.updated_at,
+    p.image_id,
+    i.image_url,
+    COALESCE(img_agg.image_ids, ARRAY[]::uuid[]) AS image_ids,
+    COALESCE(img_agg.images, '[]'::json) AS images,
+    COALESCE(ppv_agg.product_parameter_values, '[]'::json) AS product_parameter_values
+FROM products p
+LEFT JOIN images i ON p.image_id = i.id
+LEFT JOIN brands b ON p.brand_id = b.id
+
+-- Aggregate parameter groups separately
+LEFT JOIN (
+    SELECT * FROM parameter_groups
+    GROUP BY parameter_groups.id
+) pg_agg ON true
+
+-- Aggregate images separately
+LEFT JOIN (
+    SELECT
+        product_id,
+        array_agg(id) AS image_ids,
+        json_agg(json_build_object('id', id, 'imageUrl', image_url, 'name', name)) AS images
+    FROM images
+    WHERE product_id IS NOT NULL
+    GROUP BY product_id
+) img_agg ON img_agg.product_id = p.id
+
+-- Aggregate product parameter values separately
+LEFT JOIN (
+    SELECT
+        product_id,
+        json_agg(json_build_object(
+            'id', id,
+            'productId', product_id,
+            'parameterId', parameter_id,
+            'boolValue', bool_value,
+            'textValue', text_value,
+            'selectableValue', selectable_value,
+            'createdAt', created_at
+        )) AS product_parameter_values
+    FROM product_parameter_values
+    GROUP BY product_id
+) ppv_agg ON ppv_agg.product_id = p.id 
+
+-- Aggregate parameters separately
+LEFT JOIN (
+    SELECT
+        parameter_group_id,
+        json_agg(json_build_object(
+            'id', id,
+            'name', name,
+            'description', description,
+            'type', type,
+            'selectables', selectables,
+						'priority' , priority,
+            'createdAt', created_at
+        )
+				ORDER BY priority::int
+) AS parameters
+    FROM parameters
+    GROUP BY parameter_group_id
+) p_agg ON p_agg.parameter_group_id = pg_agg.id 
+WHERE p.slug = $1;
+	`
+	row := s.db.QueryRow(context.Background(), query, slug)
+
+	var productParameterValuesJSON []byte
+
+	err := row.Scan(
+		&product.ID,
+		&product.Name,
+		&product.Description,
+		&product.Parameters,
+		&product.Info,
+		&product.Price,
+		&product.Count,
+		&product.CategoryID,
+		&product.BrandID,
+		&product.BrandName,
+		&product.Slug,
+		&product.Keywords,
 		&product.CreatedAt,
 		&product.UpdatedAt,
 		&product.ImageID,
@@ -210,7 +334,7 @@ WHERE p.id = $1;
 }
 
 func (s *Service) CreateProduct(product Product) error {
-	query := "INSERT INTO products (id,name,description,info,price,count,category_id,brand_id,image_id) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9);"
+	query := "INSERT INTO products (id,name,description,info,price,count,category_id,brand_id,image_id,slug,keywords) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10);"
 	validate := utils.NewValidate()
 
 	err := validate.Struct(product)
@@ -238,6 +362,8 @@ func (s *Service) CreateProduct(product Product) error {
 		product.CategoryID,
 		product.BrandID,
 		product.ImageID,
+		product.Slug,
+		product.Keywords,
 	)
 	if err != nil {
 		return err
@@ -272,7 +398,7 @@ func (s *Service) CreateProduct(product Product) error {
 }
 
 func (s *Service) EditProduct(id string, product Product) error {
-	query := "UPDATE products SET name=$1,description=$2,info=$3,price=$4,count=$5,category_id=$6,brand_id=$7,image_id=$8 WHERE id=$9;"
+	query := "UPDATE products SET name=$1,description=$2,info=$3,price=$4,count=$5,category_id=$6,brand_id=$7,image_id=$8,slug=$9,keywords=$10 WHERE id=$11;"
 	validate := utils.NewValidate()
 
 	err := validate.Struct(product)
@@ -297,6 +423,8 @@ func (s *Service) EditProduct(id string, product Product) error {
 		product.CategoryID,
 		product.BrandID,
 		product.ImageID,
+		product.Slug,
+		product.Keywords,
 		id,
 	)
 	if err != nil {
@@ -386,6 +514,7 @@ func (s *Service) ProductsInCategory(category_id string) ([]Product, error) {
     p.count,
     p.category_id,
     p.brand_id,
+		p.slug,
     p.created_at,
     p.image_id,
     i.image_url,
@@ -419,7 +548,7 @@ GROUP BY
 
 	for rows.Next() {
 		var product Product
-		if err := rows.Scan(&product.ID, &product.Name, &product.Description, &product.Info, &product.Price, &product.Count, &product.CategoryID, &product.BrandID, &product.CreatedAt, &product.ImageID, &product.ImageUrl, &product.ImageIDs, &product.Images); err != nil {
+		if err := rows.Scan(&product.ID, &product.Name, &product.Description, &product.Info, &product.Price, &product.Count, &product.CategoryID, &product.BrandID, &product.Slug, &product.CreatedAt, &product.ImageID, &product.ImageUrl, &product.ImageIDs, &product.Images); err != nil {
 			return []Product{}, err
 		}
 

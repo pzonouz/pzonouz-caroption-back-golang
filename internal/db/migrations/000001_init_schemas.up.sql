@@ -6,6 +6,7 @@ CREATE TABLE "categories" (
     "prioirity" varchar,
     "parent_id" uuid,
     "show" boolean,
+    "slug" text,
     "created_at" timestamptz DEFAULT (now()),
     PRIMARY KEY ("id")
 );
@@ -20,6 +21,20 @@ CREATE TABLE "products" (
     "count" varchar,
     "category_id" uuid,
     "brand_id" uuid,
+    "slug" text,
+    "keywords" varchar[],
+    "created_at" timestamptz DEFAULT (now()),
+    PRIMARY KEY ("id")
+);
+
+CREATE TABLE "articles" (
+    "id" uuid UNIQUE DEFAULT (gen_random_uuid ()),
+    "name" varchar UNIQUE,
+    "description" text,
+    "image_id" uuid,
+    "slug" text,
+    "category_id" uuid,
+    "keywords" varchar[],
     "created_at" timestamptz DEFAULT (now()),
     PRIMARY KEY ("id")
 );
@@ -104,6 +119,9 @@ ALTER TABLE "images"
 ALTER TABLE "products"
     ADD FOREIGN KEY ("brand_id") REFERENCES "brands" ("id");
 
+ALTER TABLE "articles"
+    ADD FOREIGN KEY ("category_id") REFERENCES "categories" ("id");
+
 ALTER TABLE "categories"
     ADD FOREIGN KEY ("parent_id") REFERENCES "categories" ("id");
 
@@ -115,6 +133,9 @@ ALTER TABLE "products"
     ADD COLUMN IF NOT EXISTS "updated_at" timestamptz DEFAULT now();
 
 ALTER TABLE "categories"
+    ADD COLUMN IF NOT EXISTS "updated_at" timestamptz DEFAULT now();
+
+ALTER TABLE "articles"
     ADD COLUMN IF NOT EXISTS "updated_at" timestamptz DEFAULT now();
 
 -- 2.Create (or replace) the shared trigger function once
@@ -136,6 +157,11 @@ CREATE TRIGGER set_updated_at_products
 
 CREATE TRIGGER set_updated_at_categories
     BEFORE UPDATE ON "categories"
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column ();
+
+CREATE TRIGGER set_updated_at_articles
+    BEFORE UPDATE ON "articles"
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at_column ();
 
