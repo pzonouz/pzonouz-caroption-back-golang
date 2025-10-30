@@ -1,28 +1,32 @@
 CREATE TABLE "categories" (
     "id" uuid UNIQUE DEFAULT (gen_random_uuid ()),
-    "name" varchar UNIQUE,
+    "name" text UNIQUE,
     "description" text,
     "image_id" uuid,
     "prioirity" varchar,
     "parent_id" uuid,
     "show" boolean,
     "slug" text,
+    "generator" boolean,
     "created_at" timestamptz DEFAULT (now()),
     PRIMARY KEY ("id")
 );
 
 CREATE TABLE "products" (
     "id" uuid UNIQUE DEFAULT (gen_random_uuid ()),
-    "name" varchar UNIQUE,
+    "name" text UNIQUE,
     "description" text,
-    "info" varchar,
-    "price" varchar,
+    "info" text,
+    "price" text,
     "image_id" uuid,
-    "count" varchar,
+    "count" text,
     "category_id" uuid,
     "brand_id" uuid,
     "slug" text,
+    "generated" boolean,
+    "generatable" boolean,
     "keywords" varchar[],
+    "show" boolean,
     "created_at" timestamptz DEFAULT (now()),
     PRIMARY KEY ("id")
 );
@@ -33,6 +37,7 @@ CREATE TABLE "articles" (
     "description" text,
     "image_id" uuid,
     "slug" text,
+    "show_in_products" boolean DEFAULT (FALSE),
     "category_id" uuid,
     "keywords" varchar[],
     "created_at" timestamptz DEFAULT (now()),

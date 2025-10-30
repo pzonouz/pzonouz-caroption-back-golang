@@ -12,6 +12,9 @@ import (
 )
 
 func GenerateProductRoutes(mainRouter *chi.Mux, service services.Service) {
+	mainRouter.Get("/generate_products", func(w http.ResponseWriter, r *http.Request) {
+		utils.ListFromQueryToResonse(service.GenerateProducts, r, w)
+	})
 	mainRouter.Get("/product_by_slug/search", func(w http.ResponseWriter, r *http.Request) {
 		query := r.URL.Query().Get("q")
 

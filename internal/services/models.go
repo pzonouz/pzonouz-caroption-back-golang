@@ -18,7 +18,7 @@ type Child struct {
 
 type Category struct {
 	ID          pgtype.UUID `json:"id"`
-	Name        pgtype.Text `json:"name"        validate:"required,notblank"`
+	Name        pgtype.Text `json:"name"`
 	ParentID    pgtype.UUID `json:"parentId"`
 	ParentName  pgtype.Text `json:"parentName"`
 	Description pgtype.Text `json:"description"`
@@ -28,6 +28,7 @@ type Category struct {
 	Show        bool        `json:"show"`
 	Children    []Child     `json:"children"`
 	Slug        pgtype.Text `json:"slug"`
+	Generator   pgtype.Bool `json:"generator"`
 	CreatedAt   time.Time   `json:"createdAt"`
 	UpdatedAt   time.Time   `json:"updatedAt"`
 }
@@ -42,16 +43,17 @@ type Image struct {
 }
 
 type Article struct {
-	ID          pgtype.UUID   `json:"id"`
-	Name        pgtype.Text   `json:"name"`
-	Description pgtype.Text   `json:"description"`
-	ImageID     pgtype.UUID   `json:"imageId"`
-	ImageUrl    pgtype.Text   `json:"imageUrl"`
-	Slug        pgtype.Text   `json:"slug"`
-	Keywords    []pgtype.Text `json:"keywords"`
-	CategoryID  pgtype.UUID   `json:"categoryId"`
-	CreatedAt   time.Time     `json:"createdAt"`
-	UpdatedAt   time.Time     `json:"updatedAt"`
+	ID             pgtype.UUID   `json:"id"`
+	Name           pgtype.Text   `json:"name"`
+	Description    pgtype.Text   `json:"description"`
+	ImageID        pgtype.UUID   `json:"imageId"`
+	ImageUrl       pgtype.Text   `json:"imageUrl"`
+	Slug           pgtype.Text   `json:"slug"`
+	ShowInProducts bool          `json:"showInProducts"`
+	Keywords       []pgtype.Text `json:"keywords"`
+	CategoryID     pgtype.UUID   `json:"categoryId"`
+	CreatedAt      time.Time     `json:"createdAt"`
+	UpdatedAt      time.Time     `json:"updatedAt"`
 }
 
 type Product struct {
@@ -71,7 +73,10 @@ type Product struct {
 	ImageUrl               pgtype.Text             `json:"imageUrl"`
 	Parameters             []Parameter             `json:"parameters"`
 	ProductParameterValues []ProductParameterValue `json:"productParameterValues"`
+	Generatable            pgtype.Bool             `json:"generatable"`
+	Generated              pgtype.Bool             `json:"generated"`
 	Keywords               []pgtype.Text           `json:"keywords"`
+	Show                   pgtype.Bool             `json:"show"`
 	CreatedAt              time.Time               `json:"createdAt"`
 	UpdatedAt              time.Time               `json:"updatedAt"`
 }

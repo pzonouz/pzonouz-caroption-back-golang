@@ -21,6 +21,7 @@ func GenerateCategoryRoutes(mainRouter *chi.Mux, service services.Service) {
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
+
 		utils.ObjectFromQueryToResponse(service.GetCategoryBySlug, r, w, slug)
 	})
 	mainRouter.Get("/products_in_category/{id}", func(w http.ResponseWriter, r *http.Request) {
@@ -33,7 +34,15 @@ func GenerateCategoryRoutes(mainRouter *chi.Mux, service services.Service) {
 		)
 	})
 
-	// mainRouter.With(middlewares.AdminOrReadOnly).Route("/categories", func(router chi.Router) {
+	mainRouter.Get("/articles_in_category/{id}", func(w http.ResponseWriter, r *http.Request) {
+		stringId := chi.URLParam(r, "id")
+		utils.ListFromQueryToResonseById(
+			service.ArticlesInCategory,
+			r,
+			w,
+			stringId,
+		)
+	})
 	mainRouter.Route("/categories", func(router chi.Router) {
 		router.Get("/", func(w http.ResponseWriter, r *http.Request) {
 			utils.ListFromQueryToResonse(service.ListCategories, r, w)

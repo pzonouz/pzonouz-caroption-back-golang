@@ -19,6 +19,7 @@ func (s *Service) ListArticles() ([]Article, error) {
 		a.keywords,
     a.created_at,
 	  a.updated_at,
+		a.show_in_products,
     a.image_id,
     i.image_url
 FROM
@@ -37,7 +38,7 @@ LEFT JOIN images i ON a.image_id = i.id
 	for rows.Next() {
 		var article Article
 
-		if err := rows.Scan(&article.ID, &article.Name, &article.Description, &article.CategoryID, &article.Slug, &article.Keywords, &article.CreatedAt, &article.UpdatedAt, &article.ImageID, &article.ImageUrl); err != nil {
+		if err := rows.Scan(&article.ID, &article.Name, &article.Description, &article.CategoryID, &article.Slug, &article.Keywords, &article.CreatedAt, &article.UpdatedAt, &article.ShowInProducts, &article.ImageID, &article.ImageUrl); err != nil {
 			return []Article{}, err
 		}
 
@@ -65,6 +66,7 @@ func (s *Service) GetArticle(id string) (Article, error) {
 		a.keywords,
     a.created_at,
 	  a.updated_at,
+		a.show_in_products,
     a.image_id,
     i.image_url,
 FROM
@@ -85,6 +87,7 @@ WHERE a.id = $1;
 		&article.Keywords,
 		&article.CreatedAt,
 		&article.UpdatedAt,
+		&article.ShowInProducts,
 		&article.ImageID,
 		&article.ImageUrl,
 		&articleParameterValuesJSON,
@@ -106,6 +109,7 @@ func (s *Service) GetArticleBySlug(slug string) (Article, error) {
 		a.keywords,
     a.created_at,
 	  a.updated_at,
+		a.show_in_products,
     a.image_id,
     i.image_url
 FROM
@@ -124,6 +128,7 @@ WHERE a.slug = $1;
 		&article.Keywords,
 		&article.CreatedAt,
 		&article.UpdatedAt,
+		&article.ShowInProducts,
 		&article.ImageID,
 		&article.ImageUrl,
 	)
@@ -136,7 +141,7 @@ WHERE a.slug = $1;
 
 func (s *Service) CreateArticle(article Article) error {
 	query := `
-	INSERT INTO articles (id,name,description,category_id,slug,keywords,image_id) VALUES ($1,$2,$3,$4,$5,$6,$7)	`
+	INSERT INTO articles (id,name,description,category_id,slug,keywords,image_id,show_in_products) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)	`
 	validate := utils.NewValidate()
 
 	err := validate.Struct(article)
@@ -162,6 +167,7 @@ func (s *Service) CreateArticle(article Article) error {
 		article.Slug,
 		article.Keywords,
 		article.ImageID,
+		article.ShowInProducts,
 	)
 	if err != nil {
 		return err
@@ -171,7 +177,7 @@ func (s *Service) CreateArticle(article Article) error {
 }
 
 func (s *Service) EditArticle(id string, article Article) error {
-	query := "UPDATE articles SET name=$1,description=$2,category_id=$3,image_id=$4,slug=$5,keywords=$6 WHERE id=$7;"
+	query := "UPDATE articles SET name=$1,description=$2,category_id=$3,image_id=$4,slug=$5,keywords=$6,show_in_products=$7 WHERE id=$8;"
 	validate := utils.NewValidate()
 
 	err := validate.Struct(article)
@@ -194,6 +200,7 @@ func (s *Service) EditArticle(id string, article Article) error {
 		article.ImageID,
 		article.Slug,
 		article.Keywords,
+		article.ShowInProducts,
 		id,
 	)
 	if err != nil {
@@ -225,12 +232,14 @@ func (s *Service) ArticlesInCategory(category_id string) ([]Article, error) {
 		a.keywords,
     a.created_at,
 	  a.updated_at,
+		a.show_in_products,
     a.image_id,
-    i.image_url,
+    i.image_url
 FROM
     articles a
 LEFT JOIN images i ON a.image_id = i.id
-WHERE a.category_id = $1;
+LEFT JOIN categories c ON c.id = a.category_id
+WHERE c.parent_id = $1 OR c.id = $1;
 `
 
 	rows, err := s.db.Query(context.Background(), query, category_id)
@@ -243,7 +252,7 @@ WHERE a.category_id = $1;
 
 	for rows.Next() {
 		var article Article
-		if err := rows.Scan(&article.ID, &article.Name, &article.Description, &article.CategoryID, &article.Slug, &article.CreatedAt, &article.ImageID, &article.ImageUrl); err != nil {
+		if err := rows.Scan(&article.ID, &article.Name, &article.Description, &article.CategoryID, &article.Slug, &article.Keywords, &article.CreatedAt, &article.UpdatedAt, &article.ShowInProducts, &article.ImageID, &article.ImageUrl); err != nil {
 			return []Article{}, err
 		}
 
