@@ -104,16 +104,16 @@ CREATE TABLE "users" (
 );
 
 ALTER TABLE "product_parameter_values"
-    ADD FOREIGN KEY ("parameter_id") REFERENCES "parameters" ("id");
+    ADD FOREIGN KEY ("parameter_id") REFERENCES "parameters" ("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 ALTER TABLE "product_parameter_values"
-    ADD FOREIGN KEY ("product_id") REFERENCES "products" ("id");
+    ADD FOREIGN KEY ("product_id") REFERENCES "products" ("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 ALTER TABLE "parameter_groups"
     ADD FOREIGN KEY ("category_id") REFERENCES "categories" ("id");
 
 ALTER TABLE "parameters"
-    ADD FOREIGN KEY ("parameter_group_id") REFERENCES "parameter_groups" ("id");
+    ADD FOREIGN KEY ("parameter_group_id") REFERENCES "parameter_groups" ("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 ALTER TABLE "images"
     ADD FOREIGN KEY ("product_id") REFERENCES "products" ("id") ON DELETE SET NULL ON UPDATE CASCADE;

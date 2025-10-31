@@ -276,39 +276,46 @@ func (s *Service) GetProduct(id string) (Product, error) {
 	}
 
 	query := `
-	   	SELECT
+	WITH product_with_parent_category AS (
+    SELECT
+        p.id AS product_id,
+        p.slug,
+        c1.id AS category_id,
+        c2.id AS parent_category_id
+    FROM products p
+    JOIN categories c1 ON p.category_id = c1.id
+    LEFT JOIN categories c2 ON c1.parent_id = c2.id
+    WHERE p.id = $1
+)
+
+SELECT
     p.id,
     p.name,
     p.description,
-		p_agg.parameters,
+    p_agg.parameters,
     p.info,
     p.price,
     p.count,
     p.category_id,
     p.brand_id,
-	  b.name,
-		p.slug,
-		p.keywords,
+    b.name,
+    p.slug,
+    p.keywords,
     p.created_at,
-	  p.updated_at,
-	  p.generatable,
+    p.updated_at,
+    p.generatable,
     p.image_id,
     i.image_url,
-		p.show,
+    p.show,
     COALESCE(img_agg.image_ids, ARRAY[]::uuid[]) AS image_ids,
     COALESCE(img_agg.images, '[]'::json) AS images,
     COALESCE(ppv_agg.product_parameter_values, '[]'::json) AS product_parameter_values
 FROM products p
+JOIN product_with_parent_category pwpc ON p.id = pwpc.product_id
 LEFT JOIN images i ON p.image_id = i.id
 LEFT JOIN brands b ON p.brand_id = b.id
 
--- Aggregate parameter groups separately
-LEFT JOIN (
-    SELECT * FROM parameter_groups
-    GROUP BY parameter_groups.id
-) pg_agg ON true
-
--- Aggregate images separately
+-- Aggregate images
 LEFT JOIN (
     SELECT
         product_id,
@@ -319,7 +326,7 @@ LEFT JOIN (
     GROUP BY product_id
 ) img_agg ON img_agg.product_id = p.id
 
--- Aggregate product parameter values separately
+-- Aggregate product parameter values
 LEFT JOIN (
     SELECT
         product_id,
@@ -334,27 +341,26 @@ LEFT JOIN (
         )) AS product_parameter_values
     FROM product_parameter_values
     GROUP BY product_id
-) ppv_agg ON ppv_agg.product_id = p.id 
+) ppv_agg ON ppv_agg.product_id = p.id
 
--- Aggregate parameters separately
+-- Aggregate parameters from parameter groups linked to parent category
 LEFT JOIN (
     SELECT
-        parameter_group_id,
+        pg.category_id,
         json_agg(json_build_object(
-            'id', id,
-            'name', name,
-            'description', description,
-            'type', type,
-            'selectables', selectables,
-						'priority' , priority,
-            'createdAt', created_at
-        )
-				ORDER BY priority::int
-) AS parameters
-    FROM parameters
-    GROUP BY parameter_group_id
-) p_agg ON p_agg.parameter_group_id = pg_agg.id 
-WHERE p.id = $1;
+            'id', prm.id,
+            'name', prm.name,
+            'description', prm.description,
+            'type', prm.type,
+            'selectables', prm.selectables,
+            'priority', prm.priority,
+            'createdAt', prm.created_at
+        ) ORDER BY prm.priority::int) AS parameters
+    FROM parameter_groups pg
+    JOIN parameters prm ON prm.parameter_group_id = pg.id
+    GROUP BY pg.category_id
+) p_agg ON p_agg.category_id = pwpc.parent_category_id
+	WHERE p.id = $1;
 	`
 	row := s.db.QueryRow(context.Background(), query, parsedUUID)
 
@@ -396,41 +402,47 @@ WHERE p.id = $1;
 
 func (s *Service) GetProductBySlug(slug string) (Product, error) {
 	var product Product
-
 	query := `
-	   	SELECT
+	WITH product_with_parent_category AS (
+    SELECT
+        p.id AS product_id,
+        p.slug,
+        c1.id AS category_id,
+        c2.id AS parent_category_id
+    FROM products p
+    JOIN categories c1 ON p.category_id = c1.id
+    LEFT JOIN categories c2 ON c1.parent_id = c2.id
+    WHERE p.slug = $1
+)
+
+SELECT
     p.id,
     p.name,
     p.description,
-		p_agg.parameters,
+    p_agg.parameters,
     p.info,
     p.price,
     p.count,
     p.category_id,
     p.brand_id,
-	  b.name,
-		p.slug,
-		p.keywords,
+    b.name,
+    p.slug,
+    p.keywords,
     p.created_at,
-	  p.updated_at,
-	  p.generatable,
+    p.updated_at,
+    p.generatable,
     p.image_id,
     i.image_url,
-		p.show,
+    p.show,
     COALESCE(img_agg.image_ids, ARRAY[]::uuid[]) AS image_ids,
     COALESCE(img_agg.images, '[]'::json) AS images,
     COALESCE(ppv_agg.product_parameter_values, '[]'::json) AS product_parameter_values
 FROM products p
+JOIN product_with_parent_category pwpc ON p.id = pwpc.product_id
 LEFT JOIN images i ON p.image_id = i.id
 LEFT JOIN brands b ON p.brand_id = b.id
 
--- Aggregate parameter groups separately
-LEFT JOIN (
-    SELECT * FROM parameter_groups
-    GROUP BY parameter_groups.id
-) pg_agg ON true
-
--- Aggregate images separately
+-- Aggregate images
 LEFT JOIN (
     SELECT
         product_id,
@@ -441,7 +453,7 @@ LEFT JOIN (
     GROUP BY product_id
 ) img_agg ON img_agg.product_id = p.id
 
--- Aggregate product parameter values separately
+-- Aggregate product parameter values
 LEFT JOIN (
     SELECT
         product_id,
@@ -456,28 +468,28 @@ LEFT JOIN (
         )) AS product_parameter_values
     FROM product_parameter_values
     GROUP BY product_id
-) ppv_agg ON ppv_agg.product_id = p.id 
+) ppv_agg ON ppv_agg.product_id = p.id
 
--- Aggregate parameters separately
+-- Aggregate parameters from parameter groups linked to parent category
 LEFT JOIN (
     SELECT
-        parameter_group_id,
+        pg.category_id,
         json_agg(json_build_object(
-            'id', id,
-            'name', name,
-            'description', description,
-            'type', type,
-            'selectables', selectables,
-						'priority' , priority,
-            'createdAt', created_at
-        )
-				ORDER BY priority::int
-) AS parameters
-    FROM parameters
-    GROUP BY parameter_group_id
-) p_agg ON p_agg.parameter_group_id = pg_agg.id 
+            'id', prm.id,
+            'name', prm.name,
+            'description', prm.description,
+            'type', prm.type,
+            'selectables', prm.selectables,
+            'priority', prm.priority,
+            'createdAt', prm.created_at
+        ) ORDER BY prm.priority::int) AS parameters
+    FROM parameter_groups pg
+    JOIN parameters prm ON prm.parameter_group_id = pg.id
+    GROUP BY pg.category_id
+) p_agg ON p_agg.category_id = pwpc.parent_category_id
 WHERE p.slug = $1;
 	`
+
 	row := s.db.QueryRow(context.Background(), query, slug)
 
 	var productParameterValuesJSON []byte
