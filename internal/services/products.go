@@ -198,6 +198,7 @@ func (s *Service) ListProducts() ([]Product, error) {
     p.created_at,
 	  p.updated_at,
 		p.generatable,
+		p.generated,
     p.image_id,
     i.image_url,
 		p.show,
@@ -250,7 +251,7 @@ LEFT JOIN (
 
 		var productParameterValuesJSON []byte
 
-		if err := rows.Scan(&product.ID, &product.Name, &product.Description, &product.Info, &product.Price, &product.Count, &product.CategoryID, &product.BrandID, &product.Slug, &product.Keywords, &product.CreatedAt, &product.UpdatedAt, &product.Generatable, &product.ImageID, &product.ImageUrl, &product.Show, &product.ImageIDs, &product.Images, &productParameterValuesJSON); err != nil {
+		if err := rows.Scan(&product.ID, &product.Name, &product.Description, &product.Info, &product.Price, &product.Count, &product.CategoryID, &product.BrandID, &product.Slug, &product.Keywords, &product.CreatedAt, &product.UpdatedAt, &product.Generatable, &product.Generated, &product.ImageID, &product.ImageUrl, &product.Show, &product.ImageIDs, &product.Images, &productParameterValuesJSON); err != nil {
 			return []Product{}, err
 		}
 
@@ -304,6 +305,7 @@ SELECT
     p.created_at,
     p.updated_at,
     p.generatable,
+		p.generated,
     p.image_id,
     i.image_url,
     p.show,
@@ -382,6 +384,7 @@ LEFT JOIN (
 		&product.CreatedAt,
 		&product.UpdatedAt,
 		&product.Generatable,
+		&product.Generated,
 		&product.ImageID,
 		&product.ImageUrl,
 		&product.Show,
@@ -431,6 +434,7 @@ SELECT
     p.created_at,
     p.updated_at,
     p.generatable,
+		p.generated,
     p.image_id,
     i.image_url,
     p.show,
@@ -510,6 +514,7 @@ WHERE p.slug = $1;
 		&product.CreatedAt,
 		&product.UpdatedAt,
 		&product.Generatable,
+		&product.Generated,
 		&product.ImageID,
 		&product.ImageUrl,
 		&product.Show,
@@ -717,6 +722,7 @@ func (s *Service) ProductsInCategory(category_id string) ([]Product, error) {
     p.created_at,
 		p.updated_at,
 		p.generatable,
+		p.generated,
     p.image_id,
     i.image_url,
 		p.show,
@@ -750,7 +756,7 @@ GROUP BY
 
 	for rows.Next() {
 		var product Product
-		if err := rows.Scan(&product.ID, &product.Name, &product.Description, &product.Info, &product.Price, &product.Count, &product.CategoryID, &product.BrandID, &product.Slug, &product.CreatedAt, &product.UpdatedAt, &product.Generatable, &product.ImageID, &product.ImageUrl, &product.Show, &product.ImageIDs, &product.Images); err != nil {
+		if err := rows.Scan(&product.ID, &product.Name, &product.Description, &product.Info, &product.Price, &product.Count, &product.CategoryID, &product.BrandID, &product.Slug, &product.CreatedAt, &product.UpdatedAt, &product.Generatable, &product.Generated, &product.ImageID, &product.ImageUrl, &product.Show, &product.ImageIDs, &product.Images); err != nil {
 			return []Product{}, err
 		}
 
