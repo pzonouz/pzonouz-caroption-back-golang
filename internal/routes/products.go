@@ -25,6 +25,16 @@ func GenerateProductRoutes(mainRouter *chi.Mux, service services.Service) {
 
 		utils.ObjectFromQueryToResponse(service.GetProductBySlug, r, w, slug)
 	})
+	mainRouter.Get("/products/search", func(w http.ResponseWriter, r *http.Request) {
+		query := r.URL.Query().Get("q")
+
+		keyword, err := url.QueryUnescape(query)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+
+		utils.ObjectFromQueryToResponse(service.ProductsSearch, r, w, keyword)
+	})
 	mainRouter.With(middlewares.AdminOrReadOnly).Route("/products", func(router chi.Router) {
 		router.Get("/", func(w http.ResponseWriter, r *http.Request) {
 			utils.ListFromQueryToResonse(service.ListProducts, r, w)

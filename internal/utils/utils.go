@@ -214,3 +214,14 @@ func GetUserFromRequest(w http.ResponseWriter, r *http.Request) User {
 
 	return *user
 }
+
+func ReplacePersianDigits(s string) string {
+	persian := []rune("۰۱۲۳۴۵۶۷۸۹")
+
+	english := []rune("0123456789")
+	for i, p := range persian {
+		s = strings.ReplaceAll(s, string(p), string(english[i]))
+	}
+
+	return s
+}

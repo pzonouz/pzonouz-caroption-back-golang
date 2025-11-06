@@ -77,6 +77,7 @@ type Product struct {
 	Generated              pgtype.Bool             `json:"generated"`
 	Keywords               []pgtype.Text           `json:"keywords"`
 	Show                   pgtype.Bool             `json:"show"`
+	Rank                   float64                 `json:"rank"`
 	CreatedAt              time.Time               `json:"createdAt"`
 	UpdatedAt              time.Time               `json:"updatedAt"`
 }

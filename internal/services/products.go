@@ -14,7 +14,6 @@ import (
 func (s *Service) GenerateProducts() ([]Product, error) {
 	ctx := context.Background()
 
-	// 1️⃣ Fetch all generatable products
 	getGeneratableProductsQuery := `
 		SELECT p.id, p.name, p.description, p.info, p.price, p.count,
 		       p.category_id, p.brand_id, p.slug, p.keywords,
@@ -43,7 +42,6 @@ func (s *Service) GenerateProducts() ([]Product, error) {
 		generatableProducts = append(generatableProducts, p)
 	}
 
-	// 2️⃣ Fetch all generator products
 	getGeneratorProductsQuery := `
 		SELECT p.id, p.name, p.description, p.info, p.price, p.count,
 		       p.category_id, p.brand_id, p.slug, p.keywords,
@@ -74,7 +72,6 @@ func (s *Service) GenerateProducts() ([]Product, error) {
 		generatorProducts = append(generatorProducts, p)
 	}
 
-	// 3️⃣ Start transaction for safe batch generation
 	tx, err := s.db.Begin(ctx)
 	if err != nil {
 		return nil, err
@@ -102,7 +99,6 @@ func (s *Service) GenerateProducts() ([]Product, error) {
 	RETURNING id;
 	`
 
-	// 4️⃣ Combine and generate products
 	for _, generatorV := range generatorProducts {
 		for _, generatableV := range generatableProducts {
 			var newID uuid.UUID
@@ -133,7 +129,6 @@ func (s *Service) GenerateProducts() ([]Product, error) {
 				return nil, fmt.Errorf("insert or get product id failed: %v", err)
 			}
 
-			// 5️⃣ Copy images from the generatable product
 			_, err = tx.Exec(ctx, `
 				INSERT INTO images (id, name, image_url, product_id)
 				SELECT gen_random_uuid(), name, image_url, $1
@@ -148,7 +143,6 @@ func (s *Service) GenerateProducts() ([]Product, error) {
 				)
 			}
 
-			// 6️⃣ Copy parameter values from the generatable product
 			_, err = tx.Exec(ctx, `
 				INSERT INTO product_parameter_values (
 					id, product_id, parameter_id,
@@ -174,7 +168,6 @@ func (s *Service) GenerateProducts() ([]Product, error) {
 		}
 	}
 
-	// 7️⃣ Commit transaction
 	if err := tx.Commit(ctx); err != nil {
 		return nil, err
 	}
@@ -764,4 +757,64 @@ GROUP BY
 	}
 
 	return products, nil
+}
+
+func (s *Service) ProductsSearch(keywords string) ([]Product, error) {
+	query := `
+	SELECT
+  p.id,
+  p.name,
+  p.info,
+  p.price,
+  p.count,
+  p.category_id,
+  p.brand_id,
+  p.slug,
+  p.created_at,
+  p.updated_at,
+  i.image_url
+FROM
+  products AS p
+  LEFT JOIN images AS i ON p.image_id = i.id
+WHERE
+  p.show IS TRUE
+  AND (
+    p.fts @@ phraseto_tsquery('simple', normalize_persian($1))
+    OR normalize_persian(p.name) ILIKE '%' || normalize_persian($1) || '%'
+  )
+ORDER BY
+  p.updated_at DESC;
+`
+
+	rows, err := s.db.Query(context.Background(), query, keywords)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var products []Product
+
+	for rows.Next() {
+		var product Product
+		if err := rows.Scan(
+			&product.ID,
+			&product.Name,
+			&product.Info,
+			&product.Price,
+			&product.Count,
+			&product.CategoryID,
+			&product.BrandID,
+			&product.Slug,
+			&product.CreatedAt,
+			&product.UpdatedAt,
+			&product.ImageUrl,
+			// &product.Rank, // <- optional if you have Rank field
+		); err != nil {
+			return nil, err
+		}
+
+		products = append(products, product)
+	}
+
+	return products, rows.Err()
 }

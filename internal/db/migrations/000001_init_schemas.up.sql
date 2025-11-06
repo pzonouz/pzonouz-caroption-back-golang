@@ -27,6 +27,7 @@ CREATE TABLE "products" (
     "generatable" boolean,
     "keywords" varchar[],
     "show" boolean,
+    "Rank" float64,
     "created_at" timestamptz DEFAULT (now()),
     PRIMARY KEY ("id")
 );
