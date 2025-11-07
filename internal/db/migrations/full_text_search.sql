@@ -81,3 +81,19 @@ SET
                 WHERE
                     ppv.product_id = products.id))), 'C');
 
+CREATE OR REPLACE FUNCTION convert_english_digits_to_persian ()
+    RETURNS TRIGGER
+    AS $$
+BEGIN
+    NEW.name := translate(NEW.name, '0123456789', '۰۱۲۳۴۵۶۷۸۹');
+    NEW.slug := translate(NEW.slug, '0123456789', '۰۱۲۳۴۵۶۷۸۹');
+    RETURN NEW;
+END;
+$$
+LANGUAGE plpgsql;
+
+CREATE TRIGGER convert_digits_before_insert
+    BEFORE INSERT ON products
+    FOR EACH ROW
+    EXECUTE FUNCTION convert_english_digits_to_persian ();
+
