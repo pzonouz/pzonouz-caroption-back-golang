@@ -97,3 +97,32 @@ CREATE TRIGGER convert_digits_before_insert
     FOR EACH ROW
     EXECUTE FUNCTION convert_english_digits_to_persian ();
 
+UPDATE
+    categories
+SET
+    priority = translate(priority, '۰۱۲۳۴۵۶۷۸۹', '0123456789');
+
+CREATE OR REPLACE FUNCTION convert_persian_digits (text)
+    RETURNS text
+    AS $$
+BEGIN
+    RETURN translate($1, '۰۱۲۳۴۵۶۷۸۹', '0123456789');
+END;
+$$
+LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION normalize_priority ()
+    RETURNS TRIGGER
+    AS $$
+BEGIN
+    NEW.priority := convert_persian_digits (NEW.priority);
+    RETURN NEW;
+END;
+$$
+LANGUAGE plpgsql;
+
+CREATE TRIGGER trigger_normalize_priority
+    BEFORE INSERT OR UPDATE ON categories
+    FOR EACH ROW
+    EXECUTE FUNCTION normalize_priority ();
+

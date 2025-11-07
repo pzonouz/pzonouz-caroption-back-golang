@@ -12,7 +12,7 @@ type Child struct {
 	ParentID    pgtype.UUID `json:"parentId"`
 	ParentName  pgtype.Text `json:"parentName"`
 	Description pgtype.Text `json:"description"`
-	Prioirity   pgtype.Text `json:"prioirity"`
+	Priority    pgtype.Text `json:"priority"`
 	CreatedAt   time.Time   `json:"createdAt"`
 }
 
@@ -22,7 +22,7 @@ type Category struct {
 	ParentID    pgtype.UUID `json:"parentId"`
 	ParentName  pgtype.Text `json:"parentName"`
 	Description pgtype.Text `json:"description"`
-	Prioirity   pgtype.Text `json:"prioirity"`
+	Priority    pgtype.Text `json:"priority"`
 	ImageID     pgtype.UUID `json:"imageId"`
 	ImageUrl    pgtype.Text `json:"imageUrl"`
 	Show        bool        `json:"show"`

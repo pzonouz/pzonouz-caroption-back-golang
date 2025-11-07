@@ -3,7 +3,7 @@ CREATE TABLE "categories" (
     "name" text UNIQUE,
     "description" text,
     "image_id" uuid,
-    "prioirity" varchar,
+    "priority" varchar,
     "parent_id" uuid,
     "show" boolean,
     "slug" text,
@@ -78,7 +78,7 @@ CREATE TABLE "parameters" (
     "type" varchar,
     "parameter_group_id" uuid,
     "selectables" varchar[],
-    "prioirity" varchar DEFAULT ("10000000"),
+    "priority" varchar DEFAULT ("10000000"),
     "created_at" timestamptz DEFAULT (now()),
     PRIMARY KEY ("id")
 );
