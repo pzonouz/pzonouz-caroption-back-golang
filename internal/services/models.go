@@ -119,9 +119,11 @@ type ProductParameterValue struct {
 }
 
 type User struct {
-	ID        pgtype.UUID `json:"id"`
-	Password  pgtype.Text `json:"password"`
-	Email     pgtype.Text `json:"email"`
-	IsAdmin   bool        `json:"isAdmin"`
-	CreatedAt time.Time   `json:"createdAt"`
+	ID          pgtype.UUID `json:"id"`
+	Password    pgtype.Text `json:"password"`
+	Email       pgtype.Text `json:"email"`
+	Token       pgtype.Text `json:"token"`
+	TokenExpies time.Time   `json:"tokenExpires"`
+	IsAdmin     bool        `json:"isAdmin"`
+	CreatedAt   time.Time   `json:"createdAt"`
 }

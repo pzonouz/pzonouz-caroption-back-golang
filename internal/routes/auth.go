@@ -1,10 +1,13 @@
 package routes
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"net/http"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/golang-jwt/jwt/v5"
@@ -65,6 +68,104 @@ func GenerateAuthRoutes(mainRouter *chi.Mux, service services.Service) {
 				return
 			}
 		})
+		router.Get("/reset_password/{email}", func(w http.ResponseWriter, r *http.Request) {
+			email := chi.URLParam(r, "email")
+
+			user, err := service.GetUser(email)
+			if err != nil {
+				http.Error(w, "No User", http.StatusNotFound)
+
+				return
+			}
+
+			bytes := make([]byte, 16) // 16 bytes = 32 hex characters
+
+			_, err = rand.Read(bytes)
+			if err != nil {
+				http.Error(w, "", http.StatusInternalServerError)
+
+				return
+			}
+
+			hexStr := hex.EncodeToString(bytes)
+			user.Token.String = hexStr
+			user.Token.Valid = true
+			user.TokenExpies = time.Now().Add(time.Hour * 24)
+
+			err = service.EditUser(user)
+			if err != nil {
+				http.Error(w, "", http.StatusInternalServerError)
+
+				return
+			}
+
+			var emailAddrs []string
+
+			emailAddrs = append(emailAddrs, email)
+
+			err = utils.SendMail(
+				"info@caroptionshop.ir",
+				emailAddrs,
+				"Password Recovery",
+				"peymanecu@gmail.com",
+				"Peyman",
+				"<div>Click this <a href='http://localhost/reset-password-callback/"+hexStr+"'>Link</a> for Password Recovery,Exipre Time:24 Hour</div>",
+			)
+			if err != nil {
+				http.Error(w, "", http.StatusInternalServerError)
+
+				return
+			}
+
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte("OK"))
+		})
+		router.Post(
+			"/reset_password_callback/{token}",
+			func(w http.ResponseWriter, r *http.Request) {
+				token := chi.URLParam(r, "token")
+
+				user, err := service.GetUserByToken(token)
+				if err != nil {
+					http.Error(w, "Token Not Valid", http.StatusUnauthorized)
+
+					return
+				}
+
+				diff := time.Until(user.TokenExpies)
+
+				if diff < 0 {
+					http.Error(w, "Token Not Valid", http.StatusUnauthorized)
+
+					return
+				}
+
+				type Body struct {
+					Password string `json:"password"`
+				}
+
+				var body Body
+
+				decoder := json.NewDecoder(r.Body)
+
+				err = decoder.Decode(&body)
+				if err != nil {
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+
+					return
+				}
+
+				err = service.SetUserPassword(user.ID, body.Password)
+				if err != nil {
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+
+					return
+				}
+
+				w.WriteHeader(http.StatusOK)
+				w.Write([]byte(""))
+			},
+		)
 		router.Get("/me", func(w http.ResponseWriter, r *http.Request) {
 			AuthHeader := r.Header.Get("Authorization")
 			if AuthHeader == "" {
