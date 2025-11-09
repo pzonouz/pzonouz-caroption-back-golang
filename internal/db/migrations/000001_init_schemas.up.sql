@@ -175,3 +175,22 @@ CREATE TRIGGER set_updated_at_articles
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at_column ();
 
+CREATE OR REPLACE FUNCTION normalize_persian_digits ()
+    RETURNS TRIGGER
+    AS $$
+BEGIN
+    -- Example for column 'name'
+    -- Add more columns if needed, for example:
+    IF NEW.priority IS NOT NULL THEN
+        NEW.priority := translate(NEW.priority, '۰۱۲۳۴۵۶۷۸۹', '0123456789');
+    END IF;
+    RETURN NEW;
+END;
+$$
+LANGUAGE plpgsql;
+
+CREATE TRIGGER normalize_persian_digits_trigger
+    BEFORE INSERT OR UPDATE ON parameters
+    FOR EACH ROW
+    EXECUTE FUNCTION normalize_persian_digits ();
+
