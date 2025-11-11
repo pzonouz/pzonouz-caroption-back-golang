@@ -120,7 +120,7 @@ func (s *Service) GenerateProducts() ([]Product, error) {
 				generatableV.Info,
 				strconv.Itoa(totalPrice),
 				generatableV.Count.String,
-				generatableV.CategoryID,
+				generatorV.CategoryID,
 				generatableV.BrandID,
 				fmt.Sprintf("%s_%s", generatableV.Slug.String, generatorV.Slug.String),
 				generatableV.Keywords,
