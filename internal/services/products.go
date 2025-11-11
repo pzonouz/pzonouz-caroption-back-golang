@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strconv"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -29,6 +30,7 @@ func (s *Service) GenerateProducts() ([]Product, error) {
 	defer rows.Close()
 
 	var generatableProducts []Product
+
 	for rows.Next() {
 		var p Product
 		if err := rows.Scan(
@@ -59,6 +61,7 @@ func (s *Service) GenerateProducts() ([]Product, error) {
 	defer rows.Close()
 
 	var generatorProducts []Product
+
 	for rows.Next() {
 		var p Product
 		if err := rows.Scan(
@@ -261,6 +264,51 @@ LEFT JOIN (
 	return products, nil
 }
 
+func (s *Service) RecentlyAddedProducts() ([]Product, error) {
+	delayedTime := time.Now().AddDate(0, 0, -30)
+	query := `
+   	SELECT
+    p.id,
+    p.name,
+    p.description,
+    p.info,
+    p.price,
+    p.count,
+		p.slug,
+		p.keywords,
+    p.created_at,
+	  p.updated_at,
+    p.image_id,
+    i.image_url,
+		p.show
+FROM
+    products p
+LEFT JOIN images i ON p.image_id = i.id
+WHERE p.created_at > $1
+ORDER BY p.created_at ASC
+`
+
+	rows, err := s.db.Query(context.Background(), query, delayedTime)
+	if err != nil {
+		return []Product{}, err
+	}
+	defer rows.Close()
+
+	var products []Product
+
+	for rows.Next() {
+		var product Product
+
+		if err := rows.Scan(&product.ID, &product.Name, &product.Description, &product.Info, &product.Price, &product.Count, &product.Slug, &product.Keywords, &product.CreatedAt, &product.UpdatedAt, &product.ImageID, &product.ImageUrl, &product.Show); err != nil {
+			return []Product{}, err
+		}
+
+		products = append(products, product)
+	}
+
+	return products, nil
+}
+
 func (s *Service) GetProduct(id string) (Product, error) {
 	var product Product
 
@@ -398,6 +446,7 @@ LEFT JOIN (
 
 func (s *Service) GetProductBySlug(slug string) (Product, error) {
 	var product Product
+
 	query := `
 	WITH product_with_parent_category AS (
     SELECT

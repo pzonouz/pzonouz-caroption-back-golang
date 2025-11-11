@@ -27,6 +27,7 @@ func (s *Service) ListParentCategories() ([]Category, error) {
             json_build_object(
                 'id', c.id,
                 'name', c.name,
+								'slug',c.slug,
                 'createdAt', c.created_at
             )
         ) FILTER (WHERE c.id IS NOT NULL),

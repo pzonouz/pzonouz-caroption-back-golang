@@ -11,6 +11,7 @@ type Child struct {
 	Name        string      `json:"name,omitempty"`
 	ParentID    pgtype.UUID `json:"parentId"`
 	ParentName  pgtype.Text `json:"parentName"`
+	Sluf        pgtype.Text `json:"slug"`
 	Description pgtype.Text `json:"description"`
 	Priority    pgtype.Text `json:"priority"`
 	CreatedAt   time.Time   `json:"createdAt"`
