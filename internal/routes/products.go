@@ -12,9 +12,6 @@ import (
 )
 
 func GenerateProductRoutes(mainRouter *chi.Mux, service services.Service) {
-	mainRouter.Get("/generate_products", func(w http.ResponseWriter, r *http.Request) {
-		utils.ListFromQueryToResonse(service.GenerateProducts, r, w)
-	})
 	mainRouter.Get("/recently_added_products", func(w http.ResponseWriter, r *http.Request) {
 		utils.ListFromQueryToResonse(service.RecentlyAddedProducts, r, w)
 	})
@@ -38,6 +35,15 @@ func GenerateProductRoutes(mainRouter *chi.Mux, service services.Service) {
 
 		utils.ObjectFromQueryToResponse(service.ProductsSearch, r, w, keyword)
 	})
+	mainRouter.With(middlewares.AdminOnly).Route("/generate", func(router chi.Router) {
+		router.Get("/products", func(w http.ResponseWriter, r *http.Request) {
+			utils.ListFromQueryToResonse(service.GenerateProducts, r, w)
+		})
+		router.Get("/delete", func(w http.ResponseWriter, r *http.Request) {
+			utils.ListFromQueryToResonse(service.DeleteGeneratedProducts, r, w)
+		})
+	})
+
 	mainRouter.With(middlewares.AdminOrReadOnly).Route("/products", func(router chi.Router) {
 		router.Get("/", func(w http.ResponseWriter, r *http.Request) {
 			utils.ListFromQueryToResonse(service.ListProducts, r, w)

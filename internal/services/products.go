@@ -12,6 +12,21 @@ import (
 	"github.com/pzonouz/pzonouz-caroption-back-golang/internal/utils"
 )
 
+func (s *Service) DeleteGeneratedProducts() ([]Product, error) {
+	deleteGeneratedProductsQuery := `
+		DELETE  FROM
+		products
+		WHERE generated = TRUE;
+	`
+
+	_, err := s.db.Exec(context.Background(), deleteGeneratedProductsQuery)
+	if err != nil {
+		return nil, err
+	}
+
+	return []Product{}, nil
+}
+
 func (s *Service) GenerateProducts() ([]Product, error) {
 	ctx := context.Background()
 
@@ -20,7 +35,7 @@ func (s *Service) GenerateProducts() ([]Product, error) {
 		       p.category_id, p.brand_id, p.slug, p.keywords,
 		       p.created_at, p.updated_at, p.image_id
 		FROM products AS p
-		WHERE p.generatable = TRUE;
+		WHERE p.generatable = TRUE AND p.generated = FALSE;
 	`
 
 	rows, err := s.db.Query(ctx, getGeneratableProductsQuery)
@@ -45,14 +60,15 @@ func (s *Service) GenerateProducts() ([]Product, error) {
 	}
 
 	getGeneratorProductsQuery := `
-		SELECT p.id, p.name, p.description, p.info, p.price, p.count,
-		       p.category_id, p.brand_id, p.slug, p.keywords,
-		       p.created_at, p.updated_at, p.image_id
-		FROM products AS p
-		LEFT JOIN categories AS c ON p.category_id = c.id
-		LEFT JOIN categories AS parent ON c.parent_id = parent.id
-		WHERE parent.generator = TRUE;
-	`
+	SELECT p.id, p.name, p.description, p.info, p.price, p.count,
+	       p.category_id, p.brand_id, p.slug, p.keywords,
+	       p.created_at, p.updated_at, p.image_id
+	FROM products AS p
+	LEFT JOIN categories AS c ON p.category_id = c.id
+	LEFT JOIN categories AS parent ON c.parent_id = parent.id
+	WHERE parent.generator = TRUE
+	  AND p.generated = FALSE;
+`
 
 	rows, err = s.db.Query(ctx, getGeneratorProductsQuery)
 	if err != nil {
