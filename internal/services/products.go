@@ -101,9 +101,9 @@ func (s *Service) GenerateProducts() ([]Product, error) {
 	INSERT INTO products (
 		id, name, description, info, price, count,
 		category_id, brand_id, slug, keywords,
-		image_id, generated, generatable
+		image_id, generated, generatable,show
 	)
-	VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
+	VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
 	ON CONFLICT (name)
 	DO UPDATE SET
 		description = EXCLUDED.description,
@@ -143,6 +143,7 @@ func (s *Service) GenerateProducts() ([]Product, error) {
 				generatorV.ImageID,
 				true,  // generated
 				false, // generatable
+				true,
 			).Scan(&newID)
 			if err != nil {
 				return nil, fmt.Errorf("insert or get product id failed: %v", err)
