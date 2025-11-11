@@ -114,8 +114,8 @@ func (s *Service) GenerateProducts() ([]Product, error) {
 		brand_id = EXCLUDED.brand_id,
 		slug = EXCLUDED.slug,
 		keywords = EXCLUDED.keywords,
-		image_id = EXCLUDED.image_id
-		show = EXCLUDED.show,
+		image_id = EXCLUDED.image_id,
+		show = EXCLUDED.show
 	RETURNING id;
 	`
 
