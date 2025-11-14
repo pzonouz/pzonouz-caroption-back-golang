@@ -8,11 +8,12 @@ import (
 
 	"github.com/pzonouz/pzonouz-caroption-back-golang/internal/services"
 	"github.com/pzonouz/pzonouz-caroption-back-golang/internal/utils"
+	"github.com/pzonouz/pzonouz-caroption-back-golang/middlewares"
 )
 
 func GenerateCategoryRoutes(mainRouter *chi.Mux, service services.Service) {
 	mainRouter.Get("/parent_categories", func(w http.ResponseWriter, r *http.Request) {
-		utils.ListFromQueryToResonse(service.ListParentCategories, r, w)
+		utils.ListFromQueryToResponse(service.ListParentCategories, r, w)
 	})
 	mainRouter.Get("/category_by_slug/search", func(w http.ResponseWriter, r *http.Request) {
 		query := r.URL.Query().Get("q")
@@ -26,7 +27,7 @@ func GenerateCategoryRoutes(mainRouter *chi.Mux, service services.Service) {
 	})
 	mainRouter.Get("/products_in_category/{id}", func(w http.ResponseWriter, r *http.Request) {
 		stringId := chi.URLParam(r, "id")
-		utils.ListFromQueryToResonseById(
+		utils.ListFromQueryToResponseById(
 			service.ProductsInCategory,
 			r,
 			w,
@@ -36,16 +37,16 @@ func GenerateCategoryRoutes(mainRouter *chi.Mux, service services.Service) {
 
 	mainRouter.Get("/articles_in_category/{id}", func(w http.ResponseWriter, r *http.Request) {
 		stringId := chi.URLParam(r, "id")
-		utils.ListFromQueryToResonseById(
+		utils.ListFromQueryToResponseById(
 			service.ArticlesInCategory,
 			r,
 			w,
 			stringId,
 		)
 	})
-	mainRouter.Route("/categories", func(router chi.Router) {
+	mainRouter.With(middlewares.AdminOrReadOnly).Route("/categories", func(router chi.Router) {
 		router.Get("/", func(w http.ResponseWriter, r *http.Request) {
-			utils.ListFromQueryToResonse(service.ListCategories, r, w)
+			utils.ListFromQueryToResponse(service.ListCategories, r, w)
 		})
 
 		router.Get("/{id}", func(w http.ResponseWriter, r *http.Request) {

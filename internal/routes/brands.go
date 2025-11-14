@@ -13,7 +13,7 @@ import (
 func GenerateBrandRoutes(mainRouter *chi.Mux, service services.Service) {
 	mainRouter.With(middlewares.AdminOrReadOnly).Route("/brands", func(router chi.Router) {
 		router.Get("/", func(w http.ResponseWriter, r *http.Request) {
-			utils.ListFromQueryToResonse(service.ListBrands, r, w)
+			utils.ListFromQueryToResponse(service.ListBrands, r, w)
 		})
 
 		router.Get("/{id}", func(w http.ResponseWriter, r *http.Request) {

@@ -72,7 +72,7 @@ func HttpJsonFromObject[T any](object T, w http.ResponseWriter) {
 	}
 }
 
-func ListFromQueryToResonse[T any](
+func ListFromQueryToResponse[T any](
 	query func() ([]T, error),
 	r *http.Request,
 	w http.ResponseWriter,
@@ -87,7 +87,7 @@ func ListFromQueryToResonse[T any](
 	HttpJsonFromArray(objects, w)
 }
 
-func ListFromQueryToResonseById[T any](
+func ListFromQueryToResponseById[T any](
 	query func(string) ([]T, error),
 	r *http.Request,
 	w http.ResponseWriter,

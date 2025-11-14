@@ -31,7 +31,7 @@ WHERE email = $1;
 		&user.IsAdmin,
 		&user.Password,
 		&user.Token,
-		&user.TokenExpies,
+		&user.TokenExpires,
 		&user.CreatedAt,
 	)
 	if err != nil {
@@ -55,7 +55,7 @@ WHERE token = $1;
 
 	err := row.Scan(
 		&user.ID,
-		&user.TokenExpies,
+		&user.TokenExpires,
 		&user.Email,
 		&user.CreatedAt,
 		&user.IsAdmin,
@@ -101,7 +101,7 @@ func (s *Service) EditUser(user User) error {
 		user.CreatedAt,
 		user.IsAdmin,
 		user.Token,
-		user.TokenExpies,
+		user.TokenExpires,
 		user.ID,
 	)
 	if err != nil {

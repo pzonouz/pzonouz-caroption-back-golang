@@ -21,7 +21,7 @@ func (s *Service) ListImages() ([]Image, error) {
 
 	for rows.Next() {
 		var image Image
-		if err := rows.Scan(&image.ID, &image.Name, &image.ImageUrl, &image.ProductID, &image.CategoryID, &image.CreatedAt); err != nil {
+		if err := rows.Scan(&image.ID, &image.Name, &image.ImageUrl, &image.ProductID, &image.EntityID, &image.CreatedAt); err != nil {
 			return []Image{}, err
 		}
 
@@ -39,10 +39,10 @@ func (s *Service) GetImage(id string) (Image, error) {
 		return image, err
 	}
 
-	query := "SELECT id,name,image_url,product_id,category_id,created_at FROM images WHERE id=$1"
+	query := "SELECT id,name,image_url,product_id,Entity_id,created_at FROM images WHERE id=$1"
 	row := s.db.QueryRow(context.Background(), query, parsedUUID)
 
-	err = row.Scan(&image.ID, &image.Name, &image.ImageUrl, &image.ProductID, &image.CategoryID, &image.CreatedAt)
+	err = row.Scan(&image.ID, &image.Name, &image.ImageUrl, &image.ProductID, &image.EntityID, &image.CreatedAt)
 	if err != nil {
 		return image, err
 	}
@@ -51,7 +51,7 @@ func (s *Service) GetImage(id string) (Image, error) {
 }
 
 func (s *Service) CreateImage(image Image) error {
-	query := "INSERT INTO images (id,name,image_url,product_id,category_id) VALUES($1,$2,$3,$4,$5)"
+	query := "INSERT INTO images (id,name,image_url,product_id,Entity_id) VALUES($1,$2,$3,$4,$5)"
 	validate := utils.NewValidate()
 
 	err := validate.Struct(image)
@@ -61,7 +61,7 @@ func (s *Service) CreateImage(image Image) error {
 
 	id := uuid.New()
 
-	_, err = s.db.Exec(context.Background(), query, id, image.Name, image.ImageUrl, image.ProductID, image.CategoryID)
+	_, err = s.db.Exec(context.Background(), query, id, image.Name, image.ImageUrl, image.ProductID, image.EntityID)
 	if err != nil {
 		return err
 	}
@@ -70,7 +70,7 @@ func (s *Service) CreateImage(image Image) error {
 }
 
 func (s *Service) EditImage(id string, image Image) error {
-	query := "UPDATE images SET name=$1,image_url=$2,product_id=$3,category_id=$4 WHERE id=$5;"
+	query := "UPDATE images SET name=$1,image_url=$2,product_id=$3,Entity_id=$4 WHERE id=$5;"
 	validate := utils.NewValidate()
 
 	err := validate.Struct(image)
@@ -78,7 +78,7 @@ func (s *Service) EditImage(id string, image Image) error {
 		return err
 	}
 
-	_, err = s.db.Exec(context.Background(), query, image.Name, image.ImageUrl, image.ProductID, image.CategoryID, id)
+	_, err = s.db.Exec(context.Background(), query, image.Name, image.ImageUrl, image.ProductID, image.EntityID, id)
 	if err != nil {
 		return err
 	}

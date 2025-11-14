@@ -90,7 +90,7 @@ func GenerateAuthRoutes(mainRouter *chi.Mux, service services.Service) {
 			hexStr := hex.EncodeToString(bytes)
 			user.Token.String = hexStr
 			user.Token.Valid = true
-			user.TokenExpies = time.Now().Add(time.Hour * 24)
+			user.TokenExpires = time.Now().Add(time.Hour * 24)
 
 			err = service.EditUser(user)
 			if err != nil {
@@ -109,7 +109,7 @@ func GenerateAuthRoutes(mainRouter *chi.Mux, service services.Service) {
 				"Password Recovery",
 				"peymanecu@gmail.com",
 				"Peyman",
-				"<div>Click this <a href='http://localhost/reset-password-callback/"+hexStr+"'>Link</a> for Password Recovery,Exipre Time:24 Hour</div>",
+				"<div>Click this <a href='http://localhost/reset-password-callback/"+hexStr+"'>Link</a> for Password Recovery,Expire Time:24 Hour</div>",
 			)
 			if err != nil {
 				http.Error(w, "", http.StatusInternalServerError)
@@ -132,7 +132,7 @@ func GenerateAuthRoutes(mainRouter *chi.Mux, service services.Service) {
 					return
 				}
 
-				diff := time.Until(user.TokenExpies)
+				diff := time.Until(user.TokenExpires)
 
 				if diff < 0 {
 					http.Error(w, "Token Not Valid", http.StatusUnauthorized)

@@ -13,11 +13,11 @@ import (
 func GenerateParametersRoutes(mainRouter *chi.Mux, service services.Service) {
 	mainRouter.With(middlewares.AdminOrReadOnly).Route("/parameters", func(router chi.Router) {
 		router.Get("/by-group/{id}", func(w http.ResponseWriter, r *http.Request) {
-			categoryId := chi.URLParam(r, "id")
-			utils.ListFromQueryToResonseById(service.ListParametersByCategory, r, w, categoryId)
+			EntityId := chi.URLParam(r, "id")
+			utils.ListFromQueryToResponseById(service.ListParametersByEntity, r, w, EntityId)
 		})
 		router.Get("/", func(w http.ResponseWriter, r *http.Request) {
-			utils.ListFromQueryToResonse(service.ListParameters, r, w)
+			utils.ListFromQueryToResponse(service.ListParameters, r, w)
 		})
 		router.Get("/{id}", func(w http.ResponseWriter, r *http.Request) {
 			stringId := chi.URLParam(r, "id")

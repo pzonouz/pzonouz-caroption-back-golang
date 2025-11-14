@@ -32,8 +32,12 @@ func AdminOnly(next http.Handler) http.Handler {
 		user := utils.GetUserFromRequest(w, r)
 		if user.IsAdmin {
 			next.ServeHTTP(w, r)
+
+			return
 		} else {
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+
+			return
 		}
 
 		next.ServeHTTP(w, r)

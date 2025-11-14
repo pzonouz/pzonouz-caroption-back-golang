@@ -13,7 +13,7 @@ import (
 
 func GenerateProductRoutes(mainRouter *chi.Mux, service services.Service) {
 	mainRouter.Get("/recently_added_products", func(w http.ResponseWriter, r *http.Request) {
-		utils.ListFromQueryToResonse(service.RecentlyAddedProducts, r, w)
+		utils.ListFromQueryToResponse(service.RecentlyAddedProducts, r, w)
 	})
 	mainRouter.Get("/product_by_slug/search", func(w http.ResponseWriter, r *http.Request) {
 		query := r.URL.Query().Get("q")
@@ -37,16 +37,16 @@ func GenerateProductRoutes(mainRouter *chi.Mux, service services.Service) {
 	})
 	mainRouter.With(middlewares.AdminOnly).Route("/generate", func(router chi.Router) {
 		router.Get("/products", func(w http.ResponseWriter, r *http.Request) {
-			utils.ListFromQueryToResonse(service.GenerateProducts, r, w)
+			utils.ListFromQueryToResponse(service.GenerateProducts, r, w)
 		})
 		router.Get("/delete", func(w http.ResponseWriter, r *http.Request) {
-			utils.ListFromQueryToResonse(service.DeleteGeneratedProducts, r, w)
+			utils.ListFromQueryToResponse(service.DeleteGeneratedProducts, r, w)
 		})
 	})
 
 	mainRouter.With(middlewares.AdminOrReadOnly).Route("/products", func(router chi.Router) {
 		router.Get("/", func(w http.ResponseWriter, r *http.Request) {
-			utils.ListFromQueryToResonse(service.ListProducts, r, w)
+			utils.ListFromQueryToResponse(service.ListProducts, r, w)
 		})
 
 		router.Get("/{id}", func(w http.ResponseWriter, r *http.Request) {

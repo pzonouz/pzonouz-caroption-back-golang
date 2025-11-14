@@ -9,84 +9,103 @@ import (
 )
 
 func (s *Service) ListParentCategories() ([]Category, error) {
-	query := `SELECT 
-    p.id,
-    p.name,
-    p.parent_id,
-		p.description,
-		p.priority,
-		i.image_url,
-		p.image_id,
-		p.slug,
-	  p.show,
-		p.generator,
-    p.created_at,
-	  p.updated_at,	
-    COALESCE(
-        json_agg(
-            json_build_object(
-                'id', c.id,
-                'name', c.name,
-								'slug',c.slug,
-                'createdAt', c.created_at
-            )
-        ) FILTER (WHERE c.id IS NOT NULL),
-        '[]'
-    ) AS children
-FROM categories p
-LEFT JOIN categories c ON c.parent_id = p.id
-LEFT JOIN images i ON p.image_id = i.id
-WHERE p.parent_id IS NULL
-GROUP BY p.id, p.name, p.parent_id, p.created_at,i.image_url ORDER BY p.priority;`
+	query := `
+		SELECT
+		    p.id,
+		    p.name,
+		    p.parent_id,
+		    p.description,
+		    p.priority,
+		    i.image_url,
+		    p.image_id,
+		    p.slug,
+		    p.show,
+		    p.created_at,
+		    p.updated_at,
+		    COALESCE(json_agg(json_build_object('id', c.id, 'name', c.name, 'parentId', c.parent_id, 'slug', c.slug, 'createdAt', c.created_at)) FILTER (WHERE c.id IS NOT NULL), '[]') AS children
+		FROM
+		    categories p
+		    LEFT JOIN categories c ON c.parent_id = p.id
+		    LEFT JOIN images i ON p.image_id = i.id
+		WHERE
+		    p.parent_id IS NULL
+		GROUP BY
+		    p.id,
+		    p.name,
+		    p.parent_id,
+		    p.description,
+		    p.priority,
+		    p.image_id,
+		    p.slug,
+		    p.show,
+		    p.generator,
+		    p.created_at,
+		    p.updated_at,
+		    i.image_url
+		ORDER BY
+		    p.priority`
 
 	rows, err := s.db.Query(context.Background(), query)
 	if err != nil {
-		return []Category{}, err
+		return nil, err
 	}
 	defer rows.Close()
 
 	var categories []Category
-
 	for rows.Next() {
 		var category Category
-		if err := rows.Scan(&category.ID, &category.Name, &category.ParentID, &category.Description, &category.Priority, &category.ImageUrl, &category.ImageID, &category.Slug, &category.Show, &category.Generator, &category.CreatedAt, &category.UpdatedAt, &category.Children); err != nil {
-			return []Category{}, err
+		if err := rows.Scan(
+			&category.ID,
+			&category.Name,
+			&category.ParentID,
+			&category.Description,
+			&category.Priority,
+			&category.ImageUrl,
+			&category.ImageID,
+			&category.Slug,
+			&category.Show,
+			&category.CreatedAt,
+			&category.UpdatedAt,
+			&category.Children,
+		); err != nil {
+			return nil, err
 		}
 
 		categories = append(categories, category)
 	}
 
 	if err := rows.Err(); err != nil {
-		return []Category{}, err
+		return nil, err
 	}
 
 	return categories, nil
 }
 
 func (s *Service) ListCategories() ([]Category, error) {
-	query := `SELECT
-    c.id,
-    c.name,
-    c.parent_id,
-    p.name AS parent_name,
-    c.description,
-    c.priority,
-		c.image_id,
-		i.image_url,
-		c.slug,
-	  c.show,
-	  c.generator,
-    c.created_at,
-	  c.updated_at
-FROM
-    categories AS c
-    LEFT JOIN categories p ON c.parent_id = p.id
-    LEFT JOIN images i ON c.image_id = i.id
-GROUP BY
-    c.id,
-		i.image_url,
-    p.name;
-	`
+	query := `
+		SELECT
+		    c.id,
+		    c.name,
+		    c.parent_id,
+		    p.name AS parent_name,
+		    c.description,
+		    c.priority,
+		    c.image_id,
+		    i.image_url,
+		    c.slug,
+		    c.show,
+		    c.created_at,
+		    c.updated_at
+		FROM
+		    categories AS c
+		    LEFT JOIN categories p ON c.parent_id = p.id
+		    LEFT JOIN images i ON c.image_id = i.id
+		GROUP BY
+		    c.id,
+		    i.image_url,
+		    p.name;
+		
+		`
 
 	rows, err := s.db.Query(context.Background(), query)
 	if err != nil {
@@ -98,7 +117,7 @@ GROUP BY
 
 	for rows.Next() {
 		var category Category
-		if err := rows.Scan(&category.ID, &category.Name, &category.ParentID, &category.ParentName, &category.Description, &category.Priority, &category.ImageID, &category.ImageUrl, &category.Slug, &category.Show, &category.Generator, &category.CreatedAt, &category.UpdatedAt); err != nil {
+		if err := rows.Scan(&category.ID, &category.Name, &category.ParentID, &category.ParentName, &category.Description, &category.Priority, &category.ImageID, &category.ImageUrl, &category.Slug, &category.Show, &category.CreatedAt, &category.UpdatedAt); err != nil {
 			return []Category{}, err
 		}
 
@@ -130,7 +149,6 @@ func (s *Service) GetCategory(id string) (Category, error) {
 		&category.ImageID,
 		&category.Slug,
 		&category.Show,
-		&category.Generator,
 		&category.CreatedAt,
 		&category.UpdatedAt,
 	)
@@ -144,7 +162,22 @@ func (s *Service) GetCategory(id string) (Category, error) {
 func (s *Service) GetCategoryBySlug(slug string) (Category, error) {
 	var category Category
 
-	query := "SELECT id,name,parent_id,description,priority,image_id,slug,show,generator,created_at,updated_at FROM categories WHERE slug=$1"
+	query := `
+		SELECT
+		    id,
+		    name,
+		    parent_id,
+		    description,
+		    priority,
+		    image_id,
+		    slug,
+		    SHOW,
+		    created_at,
+		    updated_at
+		FROM
+		    categories
+		WHERE
+		    slug = $1`
 	row := s.db.QueryRow(context.Background(), query, slug)
 
 	err := row.Scan(
@@ -156,7 +189,6 @@ func (s *Service) GetCategoryBySlug(slug string) (Category, error) {
 		&category.ImageID,
 		&category.Slug,
 		&category.Show,
-		&category.Generator,
 		&category.CreatedAt,
 		&category.UpdatedAt,
 	)
@@ -189,7 +221,6 @@ func (s *Service) CreateCategory(category Category) error {
 		category.ImageID,
 		category.Slug,
 		category.Show,
-		category.Generator,
 	)
 	if err != nil {
 		return err
@@ -216,7 +247,6 @@ func (s *Service) EditCategory(id string, category Category) error {
 		category.Priority,
 		category.Slug,
 		category.Show,
-		category.Generator,
 		id,
 	)
 	if err != nil {

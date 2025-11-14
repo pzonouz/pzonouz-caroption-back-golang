@@ -31,8 +31,9 @@ func (app *application) mount() *chi.Mux {
 	router.Use(middleware.Logger)
 
 	service := services.New(app.db)
-	routes.GenerateCategoryRoutes(router, service)
+	routes.GenerateEntityRoutes(router, service)
 	routes.GenerateProductRoutes(router, service)
+	routes.GenerateCategoryRoutes(router, service)
 	routes.GenerateBrandRoutes(router, service)
 	routes.GenerateImageRoutes(router, service)
 	routes.GenerateParameterGroupsRoutes(router, service)

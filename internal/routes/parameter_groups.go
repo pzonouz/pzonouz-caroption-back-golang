@@ -14,7 +14,7 @@ func GenerateParameterGroupsRoutes(mainRouter *chi.Mux, service services.Service
 	mainRouter.With(middlewares.AdminOrReadOnly).
 		Route("/parameter-groups", func(router chi.Router) {
 			router.Get("/", func(w http.ResponseWriter, r *http.Request) {
-				utils.ListFromQueryToResonse(service.ListParameterGroups, r, w)
+				utils.ListFromQueryToResponse(service.ListParameterGroups, r, w)
 			})
 
 			router.Get("/{id}", func(w http.ResponseWriter, r *http.Request) {

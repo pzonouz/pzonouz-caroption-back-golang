@@ -13,7 +13,7 @@ import (
 func GenerateImageRoutes(mainRouter *chi.Mux, service services.Service) {
 	mainRouter.With(middlewares.AdminOrReadOnly).Route("/images", func(router chi.Router) {
 		router.Get("/", func(w http.ResponseWriter, r *http.Request) {
-			utils.ListFromQueryToResonse(service.ListImages, r, w)
+			utils.ListFromQueryToResponse(service.ListImages, r, w)
 		})
 
 		router.Get("/{id}", func(w http.ResponseWriter, r *http.Request) {

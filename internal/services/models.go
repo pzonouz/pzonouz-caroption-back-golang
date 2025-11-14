@@ -9,14 +9,12 @@ import (
 type Child struct {
 	ID          pgtype.UUID `json:"id"`
 	Name        string      `json:"name,omitempty"`
+	Slug        pgtype.Text `json:"slug"`
 	ParentID    pgtype.UUID `json:"parentId"`
-	ParentName  pgtype.Text `json:"parentName"`
-	Sluf        pgtype.Text `json:"slug"`
 	Description pgtype.Text `json:"description"`
 	Priority    pgtype.Text `json:"priority"`
 	CreatedAt   time.Time   `json:"createdAt"`
 }
-
 type Category struct {
 	ID          pgtype.UUID `json:"id"`
 	Name        pgtype.Text `json:"name"`
@@ -29,18 +27,43 @@ type Category struct {
 	Show        bool        `json:"show"`
 	Children    []Child     `json:"children"`
 	Slug        pgtype.Text `json:"slug"`
-	Generator   pgtype.Bool `json:"generator"`
 	CreatedAt   time.Time   `json:"createdAt"`
 	UpdatedAt   time.Time   `json:"updatedAt"`
 }
+type Entity struct {
+	ID          pgtype.UUID   `json:"id"`
+	Name        pgtype.Text   `json:"name"`
+	Description pgtype.Text   `json:"description"`
+	ImageID     pgtype.UUID   `json:"imageId"`
+	ImageUrl    pgtype.Text   `json:"imageUrl"`
+	Price       pgtype.Text   `json:"price"`
+	Priority    pgtype.Text   `json:"priority"`
+	ParentID    pgtype.UUID   `json:"parentId"`
+	ParentName  pgtype.Text   `json:"parentName"`
+	Keywords    []pgtype.Text `json:"keywords"`
+	Show        bool          `json:"show"`
+	EntitySlug  pgtype.Text   `json:"entitySlug"`
+	// Children    []ChildEntity `json:"children"`
+	CreatedAt time.Time `json:"createdAt"`
+	UpdatedAt time.Time `json:"updatedAt"`
+}
+
+// type ChildEntity struct {
+// 	ID         pgtype.UUID `json:"id"`
+// 	Name       string      `json:"name"`
+// 	EntitySlug string      `json:"entitySlug"`
+// 	ParentId   pgtype.UUID `json:"parentId"`
+// 	ParentName pgtype.Text `json:"parentName"`
+// 	CreatedAt  time.Time   `json:"createdAt"`
+// }
 
 type Image struct {
-	ID         pgtype.UUID `json:"id"`
-	Name       string      `json:"name"`
-	ImageUrl   string      `json:"imageUrl"`
-	ProductID  pgtype.UUID `json:"productId"`
-	CategoryID pgtype.UUID `json:"categoryId"`
-	CreatedAt  time.Time   `json:"createdAt"`
+	ID        pgtype.UUID `json:"id"`
+	Name      string      `json:"name"`
+	ImageUrl  string      `json:"imageUrl"`
+	ProductID pgtype.UUID `json:"productId"`
+	EntityID  pgtype.UUID `json:"EntityId"`
+	CreatedAt time.Time   `json:"createdAt"`
 }
 
 type Article struct {
@@ -59,13 +82,14 @@ type Article struct {
 
 type Product struct {
 	ID                     pgtype.UUID             `json:"id"`
-	Name                   string                  `json:"name"`
+	Name                   pgtype.Text             `json:"name"`
 	Description            pgtype.Text             `json:"description"`
 	Info                   pgtype.Text             `json:"info"`
 	Price                  pgtype.Text             `json:"price"`
 	Count                  pgtype.Text             `json:"count"`
 	CategoryID             pgtype.UUID             `json:"categoryId"`
 	BrandID                pgtype.UUID             `json:"brandId"`
+	EntityID               pgtype.UUID             `json:"entityId"`
 	BrandName              pgtype.Text             `json:"brandName"`
 	Slug                   pgtype.Text             `json:"slug"`
 	ImageID                pgtype.UUID             `json:"imageId"`
@@ -78,7 +102,6 @@ type Product struct {
 	Generated              pgtype.Bool             `json:"generated"`
 	Keywords               []pgtype.Text           `json:"keywords"`
 	Show                   pgtype.Bool             `json:"show"`
-	Rank                   float64                 `json:"rank"`
 	CreatedAt              time.Time               `json:"createdAt"`
 	UpdatedAt              time.Time               `json:"updatedAt"`
 }
@@ -91,11 +114,11 @@ type Brand struct {
 }
 
 type ParameterGroup struct {
-	ID           pgtype.UUID `json:"id"`
-	Name         string      `json:"name"`
-	CategoryId   pgtype.UUID `json:"categoryId"`
-	CategoryName pgtype.Text `json:"categoryName"`
-	CreatedAt    time.Time   `json:"createdAt"`
+	ID         pgtype.UUID `json:"id"`
+	Name       string      `json:"name"`
+	EntityId   pgtype.UUID `json:"EntityId"`
+	EntityName pgtype.Text `json:"EntityName"`
+	CreatedAt  time.Time   `json:"createdAt"`
 }
 
 type Parameter struct {
@@ -120,11 +143,11 @@ type ProductParameterValue struct {
 }
 
 type User struct {
-	ID          pgtype.UUID `json:"id"`
-	Password    pgtype.Text `json:"password"`
-	Email       pgtype.Text `json:"email"`
-	Token       pgtype.Text `json:"token"`
-	TokenExpies time.Time   `json:"tokenExpires"`
-	IsAdmin     bool        `json:"isAdmin"`
-	CreatedAt   time.Time   `json:"createdAt"`
+	ID           pgtype.UUID `json:"id"`
+	Password     pgtype.Text `json:"password"`
+	Email        pgtype.Text `json:"email"`
+	Token        pgtype.Text `json:"token"`
+	TokenExpires time.Time   `json:"tokenExpires"`
+	IsAdmin      bool        `json:"isAdmin"`
+	CreatedAt    time.Time   `json:"createdAt"`
 }
