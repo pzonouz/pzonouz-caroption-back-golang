@@ -70,7 +70,7 @@ CREATE TABLE IF NOT EXISTS articles (
     image_id uuid,
     slug text,
     show_in_products boolean DEFAULT FALSE,
-    Entity_id uuid,
+    category_id uuid,
     keywords varchar [],
     created_at timestamptz DEFAULT now(),
     updated_at timestamptz DEFAULT now()

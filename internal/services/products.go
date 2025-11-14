@@ -83,7 +83,7 @@ func (s *Service) GenerateProducts() ([]Product, error) {
 		    e.priority,
 		    e.parent_id,
 		    e.show,
-		    e.slug,
+		    e.entity_slug,
 		    e.created_at,
 		    e.updated_at
 		FROM
