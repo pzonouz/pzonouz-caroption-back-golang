@@ -200,7 +200,7 @@ func (s *Service) GetCategoryBySlug(slug string) (Category, error) {
 }
 
 func (s *Service) CreateCategory(category Category) error {
-	query := "INSERT INTO categories (id,name,parent_id,description,priority,image_id,slug,show,generator) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9);"
+	query := "INSERT INTO categories (id,name,parent_id,description,priority,image_id,slug,show) VALUES ($1,$2,$3,$4,$5,$6,$7,$8);"
 	validate := utils.NewValidate()
 
 	err := validate.Struct(category)
