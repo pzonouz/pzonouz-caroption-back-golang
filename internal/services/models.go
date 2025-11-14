@@ -58,12 +58,13 @@ type Entity struct {
 // }
 
 type Image struct {
-	ID        pgtype.UUID `json:"id"`
-	Name      string      `json:"name"`
-	ImageUrl  string      `json:"imageUrl"`
-	ProductID pgtype.UUID `json:"productId"`
-	EntityID  pgtype.UUID `json:"EntityId"`
-	CreatedAt time.Time   `json:"createdAt"`
+	ID         pgtype.UUID `json:"id"`
+	Name       string      `json:"name"`
+	ImageUrl   string      `json:"imageUrl"`
+	CategoryID pgtype.UUID `json:"categoryId"`
+	ProductID  pgtype.UUID `json:"productId"`
+	EntityID   pgtype.UUID `json:"EntityId"`
+	CreatedAt  time.Time   `json:"createdAt"`
 }
 
 type Article struct {
