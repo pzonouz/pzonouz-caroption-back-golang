@@ -230,7 +230,7 @@ func (s *Service) CreateCategory(category Category) error {
 }
 
 func (s *Service) EditCategory(id string, category Category) error {
-	query := "UPDATE categories SET name=$1,parent_id=$2,image_id=$3,priority=$4,slug=$5,show=$6,generator=$7 WHERE id=$8;"
+	query := "UPDATE categories SET name=$1,parent_id=$2,image_id=$3,priority=$4,slug=$5,show=$6 WHERE id=$7;"
 	validate := utils.NewValidate()
 
 	err := validate.Struct(category)
