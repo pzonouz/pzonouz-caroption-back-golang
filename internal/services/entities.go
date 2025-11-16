@@ -21,7 +21,8 @@ func (s *Service) ListParentEntities() ([]Entity, error) {
 		    p.entity_slug,
 		    p.show,
 		    p.created_at,
-		    p.updated_at
+		    p.updated_at,
+		    COALESCE(json_agg(json_build_object('id', c.id, 'name', c.name, 'parentId', c.parent_id, 'entitySlug', c.entity_slug, 'createdAt', c.created_at)) FILTER (WHERE c.id IS NOT NULL), '[]') AS children
 		FROM
 		    entities p
 		    LEFT JOIN entities c ON c.parent_id = p.id
@@ -47,7 +48,7 @@ func (s *Service) ListParentEntities() ([]Entity, error) {
 
 	for rows.Next() {
 		var entity Entity
-		if err := rows.Scan(&entity.ID, &entity.Name, &entity.ParentID, &entity.Description, &entity.Priority, &entity.ImageUrl, &entity.ImageID, &entity.EntitySlug, &entity.Show, &entity.CreatedAt, &entity.UpdatedAt); err != nil {
+		if err := rows.Scan(&entity.ID, &entity.Name, &entity.ParentID, &entity.Description, &entity.Priority, &entity.ImageUrl, &entity.ImageID, &entity.EntitySlug, &entity.Show, &entity.CreatedAt, &entity.UpdatedAt, &entity.Children); err != nil {
 			return []Entity{}, err
 		}
 
@@ -126,7 +127,7 @@ func (s *Service) GetEntity(id string) (Entity, error) {
 		    priority,
 		    image_id,
 		    entity_slug,
-		    show,
+		    SHOW,
 		    created_at,
 		    updated_at
 		FROM
@@ -166,7 +167,7 @@ func (s *Service) GetEntityBySlug(slug string) (Entity, error) {
 		    priority,
 		    image_id,
 		    entity_slug,
-		    show,
+		    SHOW,
 		    created_at,
 		    updated_at
 		FROM

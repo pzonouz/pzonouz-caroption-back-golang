@@ -43,19 +43,19 @@ type Entity struct {
 	Keywords    []pgtype.Text `json:"keywords"`
 	Show        bool          `json:"show"`
 	EntitySlug  pgtype.Text   `json:"entitySlug"`
-	// Children    []ChildEntity `json:"children"`
-	CreatedAt time.Time `json:"createdAt"`
-	UpdatedAt time.Time `json:"updatedAt"`
+	Children    []ChildEntity `json:"children"`
+	CreatedAt   time.Time     `json:"createdAt"`
+	UpdatedAt   time.Time     `json:"updatedAt"`
 }
 
-// type ChildEntity struct {
-// 	ID         pgtype.UUID `json:"id"`
-// 	Name       string      `json:"name"`
-// 	EntitySlug string      `json:"entitySlug"`
-// 	ParentId   pgtype.UUID `json:"parentId"`
-// 	ParentName pgtype.Text `json:"parentName"`
-// 	CreatedAt  time.Time   `json:"createdAt"`
-// }
+type ChildEntity struct {
+	ID         pgtype.UUID `json:"id"`
+	Name       string      `json:"name"`
+	EntitySlug string      `json:"entitySlug"`
+	ParentId   pgtype.UUID `json:"parentId"`
+	ParentName pgtype.Text `json:"parentName"`
+	CreatedAt  time.Time   `json:"createdAt"`
+}
 
 type Image struct {
 	ID         pgtype.UUID `json:"id"`
