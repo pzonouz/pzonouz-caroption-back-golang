@@ -12,6 +12,9 @@ import (
 )
 
 func GenerateArticleRoutes(mainRouter *chi.Mux, service services.Service) {
+	mainRouter.Get("/recently_added_articles", func(w http.ResponseWriter, r *http.Request) {
+		utils.ListFromQueryToResponse(service.RecentlyArticles, r, w)
+	})
 	mainRouter.Get("/article_by_slug/search", func(w http.ResponseWriter, r *http.Request) {
 		query := r.URL.Query().Get("q")
 

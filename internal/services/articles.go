@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -263,6 +264,46 @@ func (s *Service) ArticlesInCategory(category_id string) ([]Article, error) {
 	for rows.Next() {
 		var article Article
 		if err := rows.Scan(&article.ID, &article.Name, &article.Description, &article.CategoryID, &article.Slug, &article.Keywords, &article.CreatedAt, &article.UpdatedAt, &article.ShowInProducts, &article.ImageID, &article.ImageUrl); err != nil {
+			return []Article{}, err
+		}
+
+		articles = append(articles, article)
+	}
+
+	return articles, nil
+}
+func (s *Service) RecentlyArticles() ([]Article, error) {
+	delayedTime := time.Now().AddDate(0, 0, -30)
+	query := `
+		SELECT
+		    p.id,
+		    p.name,
+		    p.description,
+		    p.slug,
+		    p.keywords,
+		    p.created_at,
+		    p.updated_at,
+		    p.image_id,
+		    i.image_url
+		FROM
+		    articles p
+		    LEFT JOIN images i ON p.image_id = i.id
+		WHERE
+		    p.created_at > $1
+		ORDER BY
+		    p.created_at ASC`
+
+	rows, err := s.db.Query(context.Background(), query, delayedTime)
+	if err != nil {
+		return []Article{}, err
+	}
+	defer rows.Close()
+
+	var articles []Article
+	for rows.Next() {
+		var article Article
+
+		if err := rows.Scan(&article.ID, &article.Name, &article.Description, &article.Slug, &article.Keywords, &article.CreatedAt, &article.UpdatedAt, &article.ImageID, &article.ImageUrl); err != nil {
 			return []Article{}, err
 		}
 
