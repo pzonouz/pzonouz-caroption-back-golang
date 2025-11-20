@@ -257,6 +257,7 @@ func (s *Service) ListProducts() ([]Product, error) {
 		    i.image_url,
 		    p.show,
 		    p.position,
+		    p.code,
 		    COALESCE(img_agg.image_ids, ARRAY[]::UUID[]) AS image_ids,
 		    COALESCE(img_agg.images, '[]'::JSON) AS images,
 		    COALESCE(ppv_agg.product_parameter_values, '[]'::JSON) AS product_parameter_values
@@ -300,7 +301,7 @@ func (s *Service) ListProducts() ([]Product, error) {
 
 		var productParameterValuesJSON []byte
 
-		if err := rows.Scan(&product.ID, &product.Name, &product.Description, &product.Info, &product.Price, &product.Count, &product.EntityID, &product.CategoryID, &product.BrandID, &product.Slug, &product.Keywords, &product.CreatedAt, &product.UpdatedAt, &product.Generatable, &product.Generated, &product.ImageID, &product.ImageUrl, &product.Show, &product.Position, &product.ImageIDs, &product.Images, &productParameterValuesJSON); err != nil {
+		if err := rows.Scan(&product.ID, &product.Name, &product.Description, &product.Info, &product.Price, &product.Count, &product.EntityID, &product.CategoryID, &product.BrandID, &product.Slug, &product.Keywords, &product.CreatedAt, &product.UpdatedAt, &product.Generatable, &product.Generated, &product.ImageID, &product.ImageUrl, &product.Show, &product.Position, &product.Code, &product.ImageIDs, &product.Images, &productParameterValuesJSON); err != nil {
 			return []Product{}, err
 		}
 
@@ -403,6 +404,7 @@ func (s *Service) GetProduct(id string) (Product, error) {
 		    p.image_id,
 		    i.image_url,
 		    p.show,
+			p.code,
 		    COALESCE(img_agg.image_ids, ARRAY[]::UUID[]) AS image_ids,
 		    COALESCE(img_agg.images, '[]'::JSON) AS images,
 		    COALESCE(ppv_agg.product_parameter_values, '[]'::JSON) AS product_parameter_values
@@ -471,6 +473,7 @@ func (s *Service) GetProduct(id string) (Product, error) {
 		&product.ImageID,
 		&product.ImageUrl,
 		&product.Show,
+		&product.Code,
 		&product.ImageIDs,
 		&product.Images,
 		&productParameterValuesJSON,
@@ -522,6 +525,7 @@ func (s *Service) GetProductBySlug(slug string) (Product, error) {
 		    p.image_id,
 		    i.image_url,
 		    p.show,
+			p.code,
 		    COALESCE(img_agg.image_ids, ARRAY[]::UUID[]) AS image_ids,
 		    COALESCE(img_agg.images, '[]'::JSON) AS images,
 		    COALESCE(ppv_agg.product_parameter_values, '[]'::JSON) AS product_parameter_values
@@ -591,6 +595,7 @@ func (s *Service) GetProductBySlug(slug string) (Product, error) {
 		&product.ImageID,
 		&product.ImageUrl,
 		&product.Show,
+		&product.Code,
 		&product.ImageIDs,
 		&product.Images,
 		&productParameterValuesJSON,
@@ -606,7 +611,7 @@ func (s *Service) GetProductBySlug(slug string) (Product, error) {
 	return product, nil
 }
 func (s *Service) CreateProduct(product Product) error {
-	query := "INSERT INTO products (id,name,description,info,price,count,category_id,brand_id,image_id,slug,keywords,generatable,show,position) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14);"
+	query := "INSERT INTO products (id,name,description,info,price,count,category_id,brand_id,image_id,slug,keywords,generatable,show,position,code) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15);"
 	validate := utils.NewValidate()
 
 	err := validate.Struct(product)
@@ -639,6 +644,7 @@ func (s *Service) CreateProduct(product Product) error {
 		product.Generatable,
 		product.Show,
 		product.Position,
+		product.Code,
 	)
 	if err != nil {
 		return err
@@ -680,7 +686,7 @@ func (s *Service) CreateProduct(product Product) error {
 	return tx.Commit(context.Background())
 }
 func (s *Service) EditProduct(id string, product Product) error {
-	query := "UPDATE products SET name=$1,description=$2,info=$3,price=$4,count=$5,category_id=$6,brand_id=$7,image_id=$8,slug=$9,keywords=$10,generatable=$11,show=$12,position=$13 WHERE id=$14;"
+	query := "UPDATE products SET name=$1,description=$2,info=$3,price=$4,count=$5,category_id=$6,brand_id=$7,image_id=$8,slug=$9,keywords=$10,generatable=$11,show=$12,position=$13,code=$14 WHERE id=$15;"
 	validate := utils.NewValidate()
 
 	err := validate.Struct(product)
@@ -710,6 +716,7 @@ func (s *Service) EditProduct(id string, product Product) error {
 		product.Generatable,
 		product.Show,
 		product.Position,
+		product.Code,
 		id,
 	)
 	if err != nil {
@@ -811,6 +818,7 @@ func (s *Service) ProductsInCategory(category_id string) ([]Product, error) {
 		    i.image_url,
 		    p.show,
 		    p.position,
+			p.code,
 		    COALESCE(array_agg(ims.id) FILTER (WHERE ims.id IS NOT NULL), ARRAY[]::UUID[]) AS image_ids,
 		    COALESCE(json_agg(json_build_object('id', ims.id, 'imageUrl', ims.image_url, 'name', ims.name)) FILTER (WHERE ims.id IS NOT NULL), '[]'::JSON) AS images
 		FROM
@@ -837,7 +845,7 @@ func (s *Service) ProductsInCategory(category_id string) ([]Product, error) {
 
 	for rows.Next() {
 		var product Product
-		if err := rows.Scan(&product.ID, &product.Name, &product.Description, &product.Info, &product.Price, &product.Count, &product.CategoryID, &product.BrandID, &product.Slug, &product.CreatedAt, &product.UpdatedAt, &product.Generatable, &product.Generated, &product.ImageID, &product.ImageUrl, &product.Show, &product.Position, &product.ImageIDs, &product.Images); err != nil {
+		if err := rows.Scan(&product.ID, &product.Name, &product.Description, &product.Info, &product.Price, &product.Count, &product.CategoryID, &product.BrandID, &product.Slug, &product.CreatedAt, &product.UpdatedAt, &product.Generatable, &product.Generated, &product.ImageID, &product.ImageUrl, &product.Show, &product.Position, &product.Code, &product.ImageIDs, &product.Images); err != nil {
 			return []Product{}, err
 		}
 
@@ -866,6 +874,7 @@ func (s *Service) ProductsInEntity(entity_id string) ([]Product, error) {
 		    p.image_id,
 		    i.image_url,
 		    p.show,
+			p.code,
 		    COALESCE(array_agg(ims.id) FILTER (WHERE ims.id IS NOT NULL), ARRAY[]::UUID[]) AS image_ids,
 		    COALESCE(json_agg(json_build_object('id', ims.id, 'imageUrl', ims.image_url, 'name', ims.name)) FILTER (WHERE ims.id IS NOT NULL), '[]'::JSON) AS images
 		FROM
@@ -894,7 +903,7 @@ func (s *Service) ProductsInEntity(entity_id string) ([]Product, error) {
 
 	for rows.Next() {
 		var product Product
-		if err := rows.Scan(&product.ID, &product.Name, &product.Description, &product.Info, &product.Price, &product.Count, &product.CategoryID, &product.BrandID, &product.EntityID, &product.Slug, &product.CreatedAt, &product.UpdatedAt, &product.Generatable, &product.Generated, &product.ImageID, &product.ImageUrl, &product.Show, &product.ImageIDs, &product.Images); err != nil {
+		if err := rows.Scan(&product.ID, &product.Name, &product.Description, &product.Info, &product.Price, &product.Count, &product.CategoryID, &product.BrandID, &product.EntityID, &product.Slug, &product.CreatedAt, &product.UpdatedAt, &product.Generatable, &product.Generated, &product.ImageID, &product.ImageUrl, &product.Show, &product.Code, &product.ImageIDs, &product.Images); err != nil {
 			return []Product{}, err
 		}
 
@@ -914,6 +923,7 @@ func (s *Service) ProductsSearch(keywords string) ([]Product, error) {
 		    p.category_id,
 		    p.brand_id,
 		    p.slug,
+			p.code,
 		    p.created_at,
 		    p.updated_at,
 		    i.image_url
@@ -949,6 +959,7 @@ func (s *Service) ProductsSearch(keywords string) ([]Product, error) {
 			&product.CategoryID,
 			&product.BrandID,
 			&product.Slug,
+			&product.Code,
 			&product.CreatedAt,
 			&product.UpdatedAt,
 			&product.ImageUrl,

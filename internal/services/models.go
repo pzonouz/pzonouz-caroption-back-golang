@@ -104,6 +104,7 @@ type Product struct {
 	Keywords               []pgtype.Text           `json:"keywords"`
 	Show                   pgtype.Bool             `json:"show"`
 	Position               pgtype.Text             `json:"position"`
+	Code                   pgtype.Text             `json:"code"`
 	CreatedAt              time.Time               `json:"createdAt"`
 	UpdatedAt              time.Time               `json:"updatedAt"`
 }
