@@ -256,6 +256,7 @@ func (s *Service) ListProducts() ([]Product, error) {
 		    p.image_id,
 		    i.image_url,
 		    p.show,
+		    p.position,
 		    COALESCE(img_agg.image_ids, ARRAY[]::UUID[]) AS image_ids,
 		    COALESCE(img_agg.images, '[]'::JSON) AS images,
 		    COALESCE(ppv_agg.product_parameter_values, '[]'::JSON) AS product_parameter_values
@@ -299,7 +300,7 @@ func (s *Service) ListProducts() ([]Product, error) {
 
 		var productParameterValuesJSON []byte
 
-		if err := rows.Scan(&product.ID, &product.Name, &product.Description, &product.Info, &product.Price, &product.Count, &product.EntityID, &product.CategoryID, &product.BrandID, &product.Slug, &product.Keywords, &product.CreatedAt, &product.UpdatedAt, &product.Generatable, &product.Generated, &product.ImageID, &product.ImageUrl, &product.Show, &product.ImageIDs, &product.Images, &productParameterValuesJSON); err != nil {
+		if err := rows.Scan(&product.ID, &product.Name, &product.Description, &product.Info, &product.Price, &product.Count, &product.EntityID, &product.CategoryID, &product.BrandID, &product.Slug, &product.Keywords, &product.CreatedAt, &product.UpdatedAt, &product.Generatable, &product.Generated, &product.ImageID, &product.ImageUrl, &product.Show, &product.Position, &product.ImageIDs, &product.Images, &productParameterValuesJSON); err != nil {
 			return []Product{}, err
 		}
 
@@ -605,7 +606,7 @@ func (s *Service) GetProductBySlug(slug string) (Product, error) {
 	return product, nil
 }
 func (s *Service) CreateProduct(product Product) error {
-	query := "INSERT INTO products (id,name,description,info,price,count,category_id,brand_id,image_id,slug,keywords,generatable,show) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13);"
+	query := "INSERT INTO products (id,name,description,info,price,count,category_id,brand_id,image_id,slug,keywords,generatable,show,position) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14);"
 	validate := utils.NewValidate()
 
 	err := validate.Struct(product)
@@ -637,6 +638,7 @@ func (s *Service) CreateProduct(product Product) error {
 		product.Keywords,
 		product.Generatable,
 		product.Show,
+		product.Position,
 	)
 	if err != nil {
 		return err
@@ -678,7 +680,7 @@ func (s *Service) CreateProduct(product Product) error {
 	return tx.Commit(context.Background())
 }
 func (s *Service) EditProduct(id string, product Product) error {
-	query := "UPDATE products SET name=$1,description=$2,info=$3,price=$4,count=$5,category_id=$6,brand_id=$7,image_id=$8,slug=$9,keywords=$10,generatable=$11,show=$12 WHERE id=$13;"
+	query := "UPDATE products SET name=$1,description=$2,info=$3,price=$4,count=$5,category_id=$6,brand_id=$7,image_id=$8,slug=$9,keywords=$10,generatable=$11,show=$12,position=$13 WHERE id=$14;"
 	validate := utils.NewValidate()
 
 	err := validate.Struct(product)
@@ -707,6 +709,7 @@ func (s *Service) EditProduct(id string, product Product) error {
 		product.Keywords,
 		product.Generatable,
 		product.Show,
+		product.Position,
 		id,
 	)
 	if err != nil {
@@ -807,6 +810,7 @@ func (s *Service) ProductsInCategory(category_id string) ([]Product, error) {
 		    p.image_id,
 		    i.image_url,
 		    p.show,
+		    p.position,
 		    COALESCE(array_agg(ims.id) FILTER (WHERE ims.id IS NOT NULL), ARRAY[]::UUID[]) AS image_ids,
 		    COALESCE(json_agg(json_build_object('id', ims.id, 'imageUrl', ims.image_url, 'name', ims.name)) FILTER (WHERE ims.id IS NOT NULL), '[]'::JSON) AS images
 		FROM
@@ -833,7 +837,7 @@ func (s *Service) ProductsInCategory(category_id string) ([]Product, error) {
 
 	for rows.Next() {
 		var product Product
-		if err := rows.Scan(&product.ID, &product.Name, &product.Description, &product.Info, &product.Price, &product.Count, &product.CategoryID, &product.BrandID, &product.Slug, &product.CreatedAt, &product.UpdatedAt, &product.Generatable, &product.Generated, &product.ImageID, &product.ImageUrl, &product.Show, &product.ImageIDs, &product.Images); err != nil {
+		if err := rows.Scan(&product.ID, &product.Name, &product.Description, &product.Info, &product.Price, &product.Count, &product.CategoryID, &product.BrandID, &product.Slug, &product.CreatedAt, &product.UpdatedAt, &product.Generatable, &product.Generated, &product.ImageID, &product.ImageUrl, &product.Show, &product.Position, &product.ImageIDs, &product.Images); err != nil {
 			return []Product{}, err
 		}
 

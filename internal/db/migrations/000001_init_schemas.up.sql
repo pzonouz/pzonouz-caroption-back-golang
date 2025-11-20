@@ -57,7 +57,8 @@ CREATE TABLE IF NOT EXISTS products (
     generated boolean DEFAULT FALSE,
     generatable boolean DEFAULT FALSE,
     keywords varchar [],
-    "show" boolean,
+    show boolean,
+    position varchar,
     rank double precision,
     created_at timestamptz DEFAULT now(),
     updated_at timestamptz DEFAULT now()

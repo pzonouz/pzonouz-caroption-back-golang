@@ -103,6 +103,7 @@ type Product struct {
 	Generated              pgtype.Bool             `json:"generated"`
 	Keywords               []pgtype.Text           `json:"keywords"`
 	Show                   pgtype.Bool             `json:"show"`
+	Position               pgtype.Text             `json:"position"`
 	CreatedAt              time.Time               `json:"createdAt"`
 	UpdatedAt              time.Time               `json:"updatedAt"`
 }
@@ -115,11 +116,11 @@ type Brand struct {
 }
 
 type ParameterGroup struct {
-	ID         pgtype.UUID `json:"id"`
-	Name       string      `json:"name"`
-	EntityId   pgtype.UUID `json:"EntityId"`
-	EntityName pgtype.Text `json:"EntityName"`
-	CreatedAt  time.Time   `json:"createdAt"`
+	ID           pgtype.UUID `json:"id"`
+	Name         string      `json:"name"`
+	CategoryId   pgtype.UUID `json:"categoryId"`
+	CategoryName pgtype.Text `json:"categoryName"`
+	CreatedAt    time.Time   `json:"createdAt"`
 }
 
 type Parameter struct {

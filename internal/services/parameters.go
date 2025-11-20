@@ -32,7 +32,7 @@ func (s *Service) ListParameters() ([]Parameter, error) {
 	return parameters, nil
 }
 
-func (s *Service) ListParametersByEntity(Entity_id string) ([]Parameter, error) {
+func (s *Service) ListParametersByCategory(category_id string) ([]Parameter, error) {
 	query := `
 	SELECT
 	  p.id,
@@ -45,12 +45,12 @@ func (s *Service) ListParametersByEntity(Entity_id string) ([]Parameter, error) 
 	  p.created_at
 	FROM parameters AS p
 	JOIN parameter_groups AS pg ON pg.id = p.parameter_group_id
-	JOIN categories AS c ON c.id = pg.Entity_id
+	JOIN categories AS c ON c.id = pg.category_id
 	WHERE c.id IN (SELECT cc.parent_id FROM categories as cc WHERE cc.id = $1 )
 	ORDER BY p.priority
 	`
 
-	rows, err := s.db.Query(context.Background(), query, Entity_id)
+	rows, err := s.db.Query(context.Background(), query, category_id)
 	if err != nil {
 		return []Parameter{}, err
 	}
