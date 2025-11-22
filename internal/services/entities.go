@@ -20,6 +20,7 @@ func (s *Service) ListParentEntities() ([]Entity, error) {
 		    p.image_id,
 		    p.entity_slug,
 		    p.show,
+			p.keywords,
 		    p.created_at,
 		    p.updated_at,
 		    COALESCE(json_agg(json_build_object('id', c.id, 'name', c.name, 'parentId', c.parent_id, 'entitySlug', c.entity_slug, 'createdAt', c.created_at)) FILTER (WHERE c.id IS NOT NULL), '[]') AS children
@@ -48,7 +49,7 @@ func (s *Service) ListParentEntities() ([]Entity, error) {
 
 	for rows.Next() {
 		var entity Entity
-		if err := rows.Scan(&entity.ID, &entity.Name, &entity.ParentID, &entity.Description, &entity.Priority, &entity.ImageUrl, &entity.ImageID, &entity.EntitySlug, &entity.Show, &entity.CreatedAt, &entity.UpdatedAt, &entity.Children); err != nil {
+		if err := rows.Scan(&entity.ID, &entity.Name, &entity.ParentID, &entity.Description, &entity.Priority, &entity.ImageUrl, &entity.ImageID, &entity.EntitySlug, &entity.Show, &entity.Keywords, &entity.CreatedAt, &entity.UpdatedAt, &entity.Children); err != nil {
 			return []Entity{}, err
 		}
 
@@ -75,6 +76,7 @@ func (s *Service) ListEntities() ([]Entity, error) {
 		    i.image_url,
 		    c.entity_slug,
 		    c.show,
+			c.keywords,
 		    c.created_at,
 		    c.updated_at
 		FROM
@@ -98,7 +100,7 @@ func (s *Service) ListEntities() ([]Entity, error) {
 
 	for rows.Next() {
 		var entity Entity
-		if err := rows.Scan(&entity.ID, &entity.Name, &entity.ParentID, &entity.ParentName, &entity.Description, &entity.Priority, &entity.ImageID, &entity.ImageUrl, &entity.EntitySlug, &entity.Show, &entity.CreatedAt, &entity.UpdatedAt); err != nil {
+		if err := rows.Scan(&entity.ID, &entity.Name, &entity.ParentID, &entity.ParentName, &entity.Description, &entity.Priority, &entity.ImageID, &entity.ImageUrl, &entity.EntitySlug, &entity.Show, &entity.Keywords, &entity.CreatedAt, &entity.UpdatedAt); err != nil {
 			return []Entity{}, err
 		}
 
@@ -127,7 +129,8 @@ func (s *Service) GetEntity(id string) (Entity, error) {
 		    priority,
 		    image_id,
 		    entity_slug,
-		    SHOW,
+		    show,
+			keywords,
 		    created_at,
 		    updated_at
 		FROM
@@ -145,6 +148,7 @@ func (s *Service) GetEntity(id string) (Entity, error) {
 		&Entity.ImageID,
 		&Entity.EntitySlug,
 		&Entity.Show,
+		&Entity.Keywords,
 		&Entity.CreatedAt,
 		&Entity.UpdatedAt,
 	)
@@ -167,7 +171,8 @@ func (s *Service) GetEntityBySlug(slug string) (Entity, error) {
 		    priority,
 		    image_id,
 		    entity_slug,
-		    SHOW,
+		    show,
+			keywords,
 		    created_at,
 		    updated_at
 		FROM
@@ -185,6 +190,7 @@ func (s *Service) GetEntityBySlug(slug string) (Entity, error) {
 		&Entity.ImageID,
 		&Entity.EntitySlug,
 		&Entity.Show,
+		&Entity.Keywords,
 		&Entity.CreatedAt,
 		&Entity.UpdatedAt,
 	)
@@ -197,8 +203,8 @@ func (s *Service) GetEntityBySlug(slug string) (Entity, error) {
 
 func (s *Service) CreateEntity(Entity Entity) error {
 	query := `
-		INSERT INTO entities (id, name, parent_id, description, priority, image_id, entity_slug, show)
-		    VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`
+		INSERT INTO entities (id, name, parent_id, description, priority, image_id, entity_slug, show, keywords)
+		    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`
 	validate := utils.NewValidate()
 
 	err := validate.Struct(Entity)
@@ -219,6 +225,7 @@ func (s *Service) CreateEntity(Entity Entity) error {
 		Entity.ImageID,
 		Entity.EntitySlug,
 		Entity.Show,
+		Entity.Keywords,
 	)
 	if err != nil {
 		return err
@@ -237,9 +244,10 @@ func (s *Service) EditEntity(id string, Entity Entity) error {
 		    image_id = $3,
 		    priority = $4,
 		    entity_slug = $5,
-		    show = $6
+		    show = $6,
+		    keywords = $7
 		WHERE
-		    id = $7`
+		    id = $8`
 	validate := utils.NewValidate()
 
 	err := validate.Struct(Entity)
@@ -256,6 +264,7 @@ func (s *Service) EditEntity(id string, Entity Entity) error {
 		Entity.Priority,
 		Entity.EntitySlug,
 		Entity.Show,
+		Entity.Keywords,
 		id,
 	)
 	if err != nil {

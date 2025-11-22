@@ -29,6 +29,7 @@ CREATE TABLE IF NOT EXISTS entities (
     priority varchar,
     parent_id uuid,
     show boolean,
+    keywords varchar [],
     slug text,
     created_at timestamptz DEFAULT now(),
     updated_at timestamptz DEFAULT now()

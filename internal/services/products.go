@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/pzonouz/pzonouz-caroption-back-golang/internal/utils"
 )
@@ -26,9 +27,23 @@ func (s *Service) DeleteGeneratedProducts() ([]Product, error) {
 
 	return []Product{}, nil
 }
+func uniqueStrings(input []pgtype.Text) []pgtype.Text {
+	seen := make(map[pgtype.Text]bool)
+	result := []pgtype.Text{}
+	for _, v := range input {
+		if !seen[v] {
+			seen[v] = true
+			result = append(result, v)
+		}
+	}
+	return result
+}
 func (s *Service) GenerateProducts() ([]Product, error) {
 	ctx := context.Background()
 
+	// ------------------------------
+	// 1) Load generatable products
+	// ------------------------------
 	getGeneratableProductsQuery := `
 		SELECT
 		    p.id,
@@ -59,7 +74,6 @@ func (s *Service) GenerateProducts() ([]Product, error) {
 	defer rows.Close()
 
 	var generatableProducts []Product
-
 	for rows.Next() {
 		var p Product
 		if err := rows.Scan(
@@ -69,10 +83,12 @@ func (s *Service) GenerateProducts() ([]Product, error) {
 		); err != nil {
 			return nil, err
 		}
-
 		generatableProducts = append(generatableProducts, p)
 	}
 
+	// ------------------------------
+	// 2) Load generator entities
+	// ------------------------------
 	getGeneratorQuery := `
 		SELECT
 		    e.id,
@@ -83,6 +99,7 @@ func (s *Service) GenerateProducts() ([]Product, error) {
 		    e.priority,
 		    e.parent_id,
 		    e.show,
+		    e.keywords,
 		    e.entity_slug,
 		    e.created_at,
 		    e.updated_at
@@ -101,25 +118,27 @@ func (s *Service) GenerateProducts() ([]Product, error) {
 	defer rows.Close()
 
 	var generatorEntities []Entity
-
 	for rows.Next() {
 		var e Entity
 		if err := rows.Scan(
-			&e.ID, &e.Name, &e.Description, &e.ImageID, &e.Price, &e.Priority,
-			&e.ParentID, &e.Show, &e.EntitySlug,
-			&e.CreatedAt, &e.UpdatedAt,
+			&e.ID, &e.Name, &e.Description, &e.ImageID, &e.Price,
+			&e.Priority, &e.ParentID, &e.Show, &e.Keywords,
+			&e.EntitySlug, &e.CreatedAt, &e.UpdatedAt,
 		); err != nil {
 			return nil, err
 		}
-
 		generatorEntities = append(generatorEntities, e)
 	}
 
+	// ------------------------------
+	// 3) Begin transaction
+	// ------------------------------
 	tx, err := s.db.Begin(ctx)
 	if err != nil {
 		return nil, err
 	}
 	defer tx.Rollback(ctx)
+
 	insertOrUpdateQuery := `
 		INSERT INTO products (id, name, description, info, price, count, entity_id, category_id, brand_id, slug, keywords, image_id, generated, generatable, show)
 		    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
@@ -141,32 +160,37 @@ func (s *Service) GenerateProducts() ([]Product, error) {
 		
 		`
 
-	for _, generatorV := range generatorEntities {
-		for _, generatableV := range generatableProducts {
+	// ------------------------------
+	// 4) Generate new products
+	// ------------------------------
+	for _, generator := range generatorEntities {
+		for _, base := range generatableProducts {
+
+			// Calculate price
+			price1, _ := strconv.Atoi(base.Price.String)
+			price2, _ := strconv.Atoi(generator.Price.String)
+			totalPrice := price1 + price2
+
+			// Combine + deduplicate keywords
+			combinedKeywords := append(base.Keywords, generator.Keywords...)
+			combinedKeywords = uniqueStrings(combinedKeywords)
+
 			var newID uuid.UUID
 
-			generatableV.Keywords = append(generatableV.Keywords, generatorV.Keywords...)
-
-			price1, _ := strconv.Atoi(generatableV.Price.String)
-			price2, _ := strconv.Atoi(generatorV.Price.String)
-			totalPrice := price1 + price2
-			generatableV.Keywords = append(generatableV.Keywords, generatorV.Keywords...)
-			fmt.Print(generatableV.BrandID)
-
-			// Insert or update and return the actual ID
+			// Insert/update product
 			err = tx.QueryRow(ctx, insertOrUpdateQuery,
-				uuid.New(), // tentative ID for insert
-				generatableV.Name.String+" "+generatorV.Name.String,
-				generatableV.Description.String+" "+generatorV.Description.String,
-				generatableV.Info,
+				uuid.New(),
+				base.Name.String+" "+generator.Name.String,
+				base.Description.String+" "+generator.Description.String,
+				base.Info,
 				strconv.Itoa(totalPrice),
-				generatableV.Count.String,
-				generatorV.ID,
-				generatableV.CategoryID,
-				generatableV.BrandID,
-				fmt.Sprintf("%s_%s", generatableV.Slug.String, generatorV.EntitySlug.String),
-				generatableV.Keywords,
-				generatorV.ImageID,
+				base.Count.String,
+				generator.ID,
+				base.CategoryID,
+				base.BrandID,
+				fmt.Sprintf("%s_%s", base.Slug.String, generator.EntitySlug.String),
+				combinedKeywords,
+				generator.ImageID,
 				true,  // generated
 				false, // generatable
 				true,
@@ -175,6 +199,7 @@ func (s *Service) GenerateProducts() ([]Product, error) {
 				return nil, fmt.Errorf("insert or get product id failed: %v", err)
 			}
 
+			// Copy images
 			_, err = tx.Exec(ctx, `
 				INSERT INTO images (id, name, image_url, product_id)
 				SELECT
@@ -186,18 +211,15 @@ func (s *Service) GenerateProducts() ([]Product, error) {
 				    images
 				WHERE
 				    product_id = $2
-				ON CONFLICT (id)
+				ON CONFLICT
 				    DO NOTHING;
 				
-				`, newID, generatableV.ID)
+				`, newID, base.ID)
 			if err != nil {
-				return nil, fmt.Errorf(
-					"copying images failed for product %s: %w",
-					generatableV.ID,
-					err,
-				)
+				return nil, fmt.Errorf("copying images failed for base %s: %w", base.ID, err)
 			}
 
+			// Copy parameters
 			_, err = tx.Exec(ctx, `
 				INSERT INTO product_parameter_values (id, product_id, parameter_id, bool_value, text_value, selectable_value)
 				SELECT
@@ -218,17 +240,16 @@ func (s *Service) GenerateProducts() ([]Product, error) {
 				        text_value = EXCLUDED.text_value,
 				        selectable_value = EXCLUDED.selectable_value;
 				
-				`, newID, generatableV.ID)
+				`, newID, base.ID)
 			if err != nil {
-				return nil, fmt.Errorf(
-					"copying product parameters failed for product %s: %w",
-					generatableV.ID,
-					err,
-				)
+				return nil, fmt.Errorf("copying parameter values failed for base %s: %w", base.ID, err)
 			}
 		}
 	}
 
+	// ------------------------------
+	// 5) Commit
+	// ------------------------------
 	if err := tx.Commit(ctx); err != nil {
 		return nil, err
 	}
@@ -338,7 +359,7 @@ func (s *Service) RecentlyAddedProducts() ([]Product, error) {
 		    products p
 		    LEFT JOIN images i ON p.image_id = i.id
 		WHERE
-		    p.created_at > $1
+		    p.created_at > $1 AND p.show IS TRUE
 		ORDER BY
 		    p.created_at ASC`
 
@@ -404,7 +425,7 @@ func (s *Service) GetProduct(id string) (Product, error) {
 		    p.image_id,
 		    i.image_url,
 		    p.show,
-			p.code,
+		    p.code,
 		    COALESCE(img_agg.image_ids, ARRAY[]::UUID[]) AS image_ids,
 		    COALESCE(img_agg.images, '[]'::JSON) AS images,
 		    COALESCE(ppv_agg.product_parameter_values, '[]'::JSON) AS product_parameter_values
@@ -525,7 +546,7 @@ func (s *Service) GetProductBySlug(slug string) (Product, error) {
 		    p.image_id,
 		    i.image_url,
 		    p.show,
-			p.code,
+		    p.code,
 		    COALESCE(img_agg.image_ids, ARRAY[]::UUID[]) AS image_ids,
 		    COALESCE(img_agg.images, '[]'::JSON) AS images,
 		    COALESCE(ppv_agg.product_parameter_values, '[]'::JSON) AS product_parameter_values
@@ -818,7 +839,7 @@ func (s *Service) ProductsInCategory(category_id string) ([]Product, error) {
 		    i.image_url,
 		    p.show,
 		    p.position,
-			p.code,
+		    p.code,
 		    COALESCE(array_agg(ims.id) FILTER (WHERE ims.id IS NOT NULL), ARRAY[]::UUID[]) AS image_ids,
 		    COALESCE(json_agg(json_build_object('id', ims.id, 'imageUrl', ims.image_url, 'name', ims.name)) FILTER (WHERE ims.id IS NOT NULL), '[]'::JSON) AS images
 		FROM
@@ -826,13 +847,11 @@ func (s *Service) ProductsInCategory(category_id string) ([]Product, error) {
 		    LEFT JOIN categories c ON p.category_id = c.id
 		    LEFT JOIN images i ON p.image_id = i.id
 		    LEFT JOIN images ims ON ims.product_id = p.id
-		WHERE
-		    c.parent_id = $1
-		    OR c.id = $1
+		WHERE (c.parent_id = $1
+		    OR c.id = $1)
 		GROUP BY
 		    p.id,
 		    i.image_url;
-		
 		`
 
 	rows, err := s.db.Query(context.Background(), query, category_id)
@@ -874,7 +893,7 @@ func (s *Service) ProductsInEntity(entity_id string) ([]Product, error) {
 		    p.image_id,
 		    i.image_url,
 		    p.show,
-			p.code,
+		    p.code,
 		    COALESCE(array_agg(ims.id) FILTER (WHERE ims.id IS NOT NULL), ARRAY[]::UUID[]) AS image_ids,
 		    COALESCE(json_agg(json_build_object('id', ims.id, 'imageUrl', ims.image_url, 'name', ims.name)) FILTER (WHERE ims.id IS NOT NULL), '[]'::JSON) AS images
 		FROM
@@ -923,7 +942,7 @@ func (s *Service) ProductsSearch(keywords string) ([]Product, error) {
 		    p.category_id,
 		    p.brand_id,
 		    p.slug,
-			p.code,
+		    p.code,
 		    p.created_at,
 		    p.updated_at,
 		    i.image_url
