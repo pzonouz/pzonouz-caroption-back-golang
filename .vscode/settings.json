@@ -15,6 +15,7 @@
     "pzonouz",
     "selectables",
     "signup",
+    "Timestamptz",
     "tsquery"
   ],
   "workbench.colorCustomizations": {

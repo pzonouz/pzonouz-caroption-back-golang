@@ -90,7 +90,8 @@ func GenerateAuthRoutes(mainRouter *chi.Mux, service services.Service) {
 			hexStr := hex.EncodeToString(bytes)
 			user.Token.String = hexStr
 			user.Token.Valid = true
-			user.TokenExpires = time.Now().Add(time.Hour * 24)
+			expires := time.Now().Add(24 * time.Hour)
+			user.TokenExpires = &expires
 
 			err = service.EditUser(user)
 			if err != nil {
@@ -132,7 +133,7 @@ func GenerateAuthRoutes(mainRouter *chi.Mux, service services.Service) {
 					return
 				}
 
-				diff := time.Until(user.TokenExpires)
+				diff := time.Until(*user.TokenExpires)
 
 				if diff < 0 {
 					http.Error(w, "Token Not Valid", http.StatusUnauthorized)

@@ -150,7 +150,7 @@ type User struct {
 	Password     pgtype.Text `json:"password"`
 	Email        pgtype.Text `json:"email"`
 	Token        pgtype.Text `json:"token"`
-	TokenExpires time.Time   `json:"tokenExpires"`
+	TokenExpires *time.Time  `json:"tokenExpires"`
 	IsAdmin      bool        `json:"isAdmin"`
 	CreatedAt    time.Time   `json:"createdAt"`
 }
