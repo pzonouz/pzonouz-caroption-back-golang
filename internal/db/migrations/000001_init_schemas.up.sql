@@ -188,6 +188,11 @@ ADD
     CONSTRAINT fk_categories_parent FOREIGN KEY (parent_id) REFERENCES categories (id);
 
 ALTER TABLE
+    IF EXISTS entities
+ADD
+    CONSTRAINT fk_entities_parent FOREIGN KEY (parent_id) REFERENCES entities (id);
+
+ALTER TABLE
     IF EXISTS products
 ADD
     CONSTRAINT fk_products_Entity FOREIGN KEY (Entity_id) REFERENCES categories (id);

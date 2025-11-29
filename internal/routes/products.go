@@ -35,7 +35,7 @@ func GenerateProductRoutes(mainRouter *chi.Mux, service services.Service) {
 
 		utils.ObjectFromQueryToResponse(service.ProductsSearch, r, w, keyword)
 	})
-	mainRouter.With(middlewares.AdminOnly).Route("/generate", func(router chi.Router) {
+	mainRouter.With(middlewares.AdminOrReadOnly).Route("/generate", func(router chi.Router) {
 		router.Get("/products", func(w http.ResponseWriter, r *http.Request) {
 			utils.ListFromQueryToResponse(service.GenerateProducts, r, w)
 		})

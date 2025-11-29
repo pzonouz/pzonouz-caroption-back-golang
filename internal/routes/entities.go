@@ -8,6 +8,7 @@ import (
 
 	"github.com/pzonouz/pzonouz-caroption-back-golang/internal/services"
 	"github.com/pzonouz/pzonouz-caroption-back-golang/internal/utils"
+	"github.com/pzonouz/pzonouz-caroption-back-golang/middlewares"
 )
 
 func GenerateEntityRoutes(mainRouter *chi.Mux, service services.Service) {
@@ -34,7 +35,7 @@ func GenerateEntityRoutes(mainRouter *chi.Mux, service services.Service) {
 		)
 	})
 
-	mainRouter.Route("/entities", func(router chi.Router) {
+	mainRouter.With(middlewares.AdminOrReadOnly).Route("/entities", func(router chi.Router) {
 		router.Get("/", func(w http.ResponseWriter, r *http.Request) {
 			utils.ListFromQueryToResponse(service.ListEntities, r, w)
 		})

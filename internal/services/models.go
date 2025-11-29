@@ -131,6 +131,7 @@ type Parameter struct {
 	Type             pgtype.Text   `json:"type"`
 	ParameterGroupId pgtype.UUID   `json:"parameterGroupId"`
 	Selectables      []pgtype.Text `json:"selectables"`
+	ParameterGroup   pgtype.Text   `json:"parameterGroup"`
 	Priority         pgtype.Text   `json:"priority"`
 	CreatedAt        time.Time     `json:"createdAt"`
 }
