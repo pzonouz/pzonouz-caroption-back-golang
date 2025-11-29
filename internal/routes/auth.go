@@ -109,7 +109,7 @@ func GenerateAuthRoutes(mainRouter *chi.Mux, service services.Service) {
 				"Password Recovery",
 				"peymanecu@gmail.com",
 				"Peyman",
-				"<div>Click this <a href='http://localhost/reset-password-callback/"+hexStr+"'>Link</a> for Password Recovery,Expire Time:24 Hour</div>",
+				"<div>Click this <a href='"+os.Getenv("BASE_URL")+"/reset-password-callback/"+hexStr+"'>Link</a> for Password Recovery,Expire Time:24 Hour</div>",
 			)
 			if err != nil {
 				http.Error(w, "", http.StatusInternalServerError)
