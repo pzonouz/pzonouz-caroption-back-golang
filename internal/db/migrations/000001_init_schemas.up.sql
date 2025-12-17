@@ -20,6 +20,16 @@ CREATE TABLE IF NOT EXISTS categories (
     updated_at timestamptz DEFAULT now()
 );
 
+CREATE TABLE IF NOT EXISTS persons (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    first_name text,
+    last_name text,
+    address text,
+    phone_number text UNIQUE,
+    created_at timestamptz DEFAULT now(),
+    updated_at timestamptz DEFAULT now()
+);
+
 CREATE TABLE IF NOT EXISTS entities (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     name text UNIQUE,
@@ -130,6 +140,34 @@ CREATE TABLE IF NOT EXISTS users (
     updated_at timestamptz DEFAULT now()
 );
 
+CREATE TYPE invoice_type AS ENUM ('sell', 'buy');
+
+CREATE TABLE IF NOT EXISTS invoices (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    person_id uuid NOT NULL,
+    type invoice_type NOT NULL,
+    number SERIAL UNIQUE NOT NULL,
+    total NUMERIC(12, 2) NOT NULL DEFAULT 0,
+    discount NUMERIC(12, 2) NOT NULL DEFAULT 0,
+    net_total NUMERIC(12, 2) NOT NULL DEFAULT 0,
+    notes TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS invoice_items (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    invoice_id uuid NOT NULL REFERENCES invoices(id) ON DELETE CASCADE,
+    product_id uuid NULL,
+    price NUMERIC(12, 2) NOT NULL DEFAULT 0,
+    discount NUMERIC(12, 2) NOT NULL DEFAULT 0,
+    count INTEGER NOT NULL DEFAULT 1,
+    description TEXT,
+    total NUMERIC(12, 2) NOT NULL DEFAULT 0,
+    net_total NUMERIC(12, 2) NOT NULL DEFAULT 0,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+);
+
 -- =====================================================
 -- Foreign keys
 -- =====================================================
@@ -196,6 +234,23 @@ ALTER TABLE
     IF EXISTS products
 ADD
     CONSTRAINT fk_products_Entity FOREIGN KEY (Entity_id) REFERENCES categories (id);
+
+-- FK to persons table (adjust table/column name if different)
+ALTER TABLE
+    invoices
+ADD
+    CONSTRAINT invoices_person_fk FOREIGN KEY (person_id) REFERENCES persons(id) ON DELETE RESTRICT;
+
+-- Optional FK to products table (uncomment/adjust if product table exists)
+ALTER TABLE
+    invoice_items
+ADD
+    CONSTRAINT invoice_items_product_fk FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE RESTRICT;
+
+ALTER TABLE
+    invoice_items
+ADD
+    CONSTRAINT invoice_items_invoice_fk FOREIGN KEY (invoice_id) REFERENCES invoices(id) ON DELETE CASCADE;
 
 -- =====================================================
 -- Trigger: auto-update updated_at column

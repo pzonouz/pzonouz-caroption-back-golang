@@ -3,6 +3,7 @@ package services
 import (
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -154,4 +155,42 @@ type User struct {
 	TokenExpires *time.Time  `json:"tokenExpires"`
 	IsAdmin      bool        `json:"isAdmin"`
 	CreatedAt    time.Time   `json:"createdAt"`
+}
+
+type InvoiceItem struct {
+	ID          uuid.UUID `json:"id"`
+	InvoiceID   uuid.UUID `json:"invoiceId"`
+	ProductID   uuid.UUID `json:"productId"`
+	Price       int64     `json:"price"`
+	Discount    int64     `json:"discount"`
+	Count       int       `json:"count"`
+	Description string    `json:"description,omitempty"`
+	Total       int64     `json:"total"`
+	NetTotal    int64     `json:"netTotal"`
+	CreatedAt   time.Time `json:"createdAt"`
+	UpdatedAt   time.Time `json:"updatedAt"`
+}
+
+type Invoice struct {
+	ID         uuid.UUID     `json:"id"`
+	PersonID   uuid.UUID     `json:"personId"`
+	PersonName pgtype.Text   `json:"personName"`
+	Type       string        `json:"type"`
+	Total      int64         `json:"total"`
+	Discount   int64         `json:"discount"`
+	NetTotal   int64         `json:"netTotal"`
+	Notes      string        `json:"notes,omitempty"`
+	Number     int           `json:"number"`
+	Items      []InvoiceItem `json:"items"`
+	CreatedAt  time.Time     `json:"createdAt"`
+	UpdatedAt  time.Time     `json:"updatedAt"`
+}
+type Person struct {
+	ID          pgtype.UUID `json:"id"`
+	FirstName   pgtype.Text `json:"firstName"`
+	LastName    pgtype.Text `json:"lastName"`
+	Address     pgtype.Text `json:"address"`
+	PhoneNumber pgtype.Text `json:"phoneNumber"`
+	CreatedAt   time.Time   `json:"createdAt"`
+	UpdatedAt   time.Time   `json:"updatedAt"`
 }
