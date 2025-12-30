@@ -7,7 +7,7 @@ CREATE EXTENSION IF NOT EXISTS pgcrypto;
 -- Tables
 -- =====================================================
 CREATE TABLE IF NOT EXISTS categories (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid (),
     name text UNIQUE,
     description text,
     image_id uuid,
@@ -21,7 +21,7 @@ CREATE TABLE IF NOT EXISTS categories (
 );
 
 CREATE TABLE IF NOT EXISTS persons (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid (),
     first_name text,
     last_name text,
     address text,
@@ -31,7 +31,7 @@ CREATE TABLE IF NOT EXISTS persons (
 );
 
 CREATE TABLE IF NOT EXISTS entities (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid (),
     name text UNIQUE,
     description text,
     image_id uuid,
@@ -39,14 +39,14 @@ CREATE TABLE IF NOT EXISTS entities (
     priority varchar,
     parent_id uuid,
     show boolean,
-    keywords varchar [],
+    keywords varchar[],
     slug text,
     created_at timestamptz DEFAULT now(),
     updated_at timestamptz DEFAULT now()
 );
 
 CREATE TABLE IF NOT EXISTS brands (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid (),
     name varchar UNIQUE,
     description text,
     created_at timestamptz DEFAULT now(),
@@ -54,7 +54,7 @@ CREATE TABLE IF NOT EXISTS brands (
 );
 
 CREATE TABLE IF NOT EXISTS products (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid (),
     name text UNIQUE,
     description text,
     info text,
@@ -62,12 +62,11 @@ CREATE TABLE IF NOT EXISTS products (
     image_id uuid,
     entity_id uuid,
     count text,
-    Entity_id uuid,
     brand_id uuid,
     entitySlug text,
     generated boolean DEFAULT FALSE,
     generatable boolean DEFAULT FALSE,
-    keywords varchar [],
+    keywords varchar[],
     show boolean,
     position varchar,
     rank double precision,
@@ -76,20 +75,20 @@ CREATE TABLE IF NOT EXISTS products (
 );
 
 CREATE TABLE IF NOT EXISTS articles (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid (),
     name varchar UNIQUE,
     description text,
     image_id uuid,
     slug text,
     show_in_products boolean DEFAULT FALSE,
     category_id uuid,
-    keywords varchar [],
+    keywords varchar[],
     created_at timestamptz DEFAULT now(),
     updated_at timestamptz DEFAULT now()
 );
 
 CREATE TABLE IF NOT EXISTS images (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid (),
     name varchar,
     image_url text,
     product_id uuid,
@@ -99,7 +98,7 @@ CREATE TABLE IF NOT EXISTS images (
 );
 
 CREATE TABLE IF NOT EXISTS parameter_groups (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid (),
     name varchar UNIQUE,
     Entity_id uuid,
     created_at timestamptz DEFAULT now(),
@@ -107,19 +106,19 @@ CREATE TABLE IF NOT EXISTS parameter_groups (
 );
 
 CREATE TABLE IF NOT EXISTS parameters (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid (),
     name varchar UNIQUE,
     description text,
     type varchar,
     parameter_group_id uuid,
-    selectables varchar [],
+    selectables varchar[],
     priority varchar DEFAULT '10000000',
     created_at timestamptz DEFAULT now(),
     updated_at timestamptz DEFAULT now()
 );
 
 CREATE TABLE IF NOT EXISTS product_parameter_values (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid (),
     product_id uuid,
     parameter_id uuid,
     text_value varchar,
@@ -130,7 +129,7 @@ CREATE TABLE IF NOT EXISTS product_parameter_values (
 );
 
 CREATE TABLE IF NOT EXISTS users (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid (),
     email varchar UNIQUE,
     password text,
     token text,
@@ -140,212 +139,79 @@ CREATE TABLE IF NOT EXISTS users (
     updated_at timestamptz DEFAULT now()
 );
 
-CREATE TYPE invoice_type AS ENUM ('sell', 'buy');
+CREATE TYPE invoice_type AS ENUM (
+    'sell',
+    'buy'
+);
 
 CREATE TABLE IF NOT EXISTS invoices (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid (),
     person_id uuid NOT NULL,
     type invoice_type NOT NULL,
-    number SERIAL UNIQUE NOT NULL,
-    total NUMERIC(12, 2) NOT NULL DEFAULT 0,
-    discount NUMERIC(12, 2) NOT NULL DEFAULT 0,
-    net_total NUMERIC(12, 2) NOT NULL DEFAULT 0,
-    notes TEXT,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+    number serial UNIQUE NOT NULL,
+    total numeric(12, 2) NOT NULL DEFAULT 0,
+    discount numeric(12, 2) NOT NULL DEFAULT 0,
+    net_total numeric(12, 2) NOT NULL DEFAULT 0,
+    notes text,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now()
 );
 
 CREATE TABLE IF NOT EXISTS invoice_items (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    invoice_id uuid NOT NULL REFERENCES invoices(id) ON DELETE CASCADE,
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid (),
+    invoice_id uuid NOT NULL REFERENCES invoices (id) ON DELETE CASCADE,
     product_id uuid NULL,
-    price NUMERIC(12, 2) NOT NULL DEFAULT 0,
-    discount NUMERIC(12, 2) NOT NULL DEFAULT 0,
-    count INTEGER NOT NULL DEFAULT 1,
-    description TEXT,
-    total NUMERIC(12, 2) NOT NULL DEFAULT 0,
-    net_total NUMERIC(12, 2) NOT NULL DEFAULT 0,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+    price numeric(12, 2) NOT NULL DEFAULT 0,
+    discount numeric(12, 2) NOT NULL DEFAULT 0,
+    count integer NOT NULL DEFAULT 1,
+    description text,
+    total numeric(12, 2) NOT NULL DEFAULT 0,
+    net_total numeric(12, 2) NOT NULL DEFAULT 0,
+    created_at timestamp with time zone DEFAULT now()
 );
 
 -- =====================================================
 -- Foreign keys
 -- =====================================================
-ALTER TABLE
-    IF EXISTS product_parameter_values
-ADD
-    CONSTRAINT fk_ppv_parameter FOREIGN KEY (parameter_id) REFERENCES parameters (id) ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE IF EXISTS product_parameter_values
+    ADD CONSTRAINT fk_ppv_parameter FOREIGN KEY (parameter_id) REFERENCES parameters (id) ON DELETE CASCADE ON UPDATE CASCADE;
 
-ALTER TABLE
-    IF EXISTS product_parameter_values
-ADD
-    CONSTRAINT fk_ppv_product FOREIGN KEY (product_id) REFERENCES products (id) ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE IF EXISTS product_parameter_values
+    ADD CONSTRAINT fk_ppv_product FOREIGN KEY (product_id) REFERENCES products (id) ON DELETE CASCADE ON UPDATE CASCADE;
 
-ALTER TABLE
-    IF EXISTS parameter_groups
-ADD
-    CONSTRAINT fk_parameter_groups_Entity FOREIGN KEY (Entity_id) REFERENCES categories (id);
+ALTER TABLE IF EXISTS parameter_groups
+    ADD CONSTRAINT fk_parameter_groups_entity FOREIGN KEY (entity_id) REFERENCES entities (id);
 
-ALTER TABLE
-    IF EXISTS parameters
-ADD
-    CONSTRAINT fk_parameters_group FOREIGN KEY (parameter_group_id) REFERENCES parameter_groups (id) ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE IF EXISTS parameters
+    ADD CONSTRAINT fk_parameters_group FOREIGN KEY (parameter_group_id) REFERENCES parameter_groups (id) ON DELETE CASCADE ON UPDATE CASCADE;
 
-ALTER TABLE
-    IF EXISTS images
-ADD
-    CONSTRAINT fk_images_product FOREIGN KEY (product_id) REFERENCES products (id) ON DELETE
-SET
-    NULL ON UPDATE CASCADE;
+ALTER TABLE IF EXISTS images
+    ADD CONSTRAINT fk_images_product FOREIGN KEY (product_id) REFERENCES products (id) ON DELETE SET NULL ON UPDATE CASCADE;
 
-ALTER TABLE
-    IF EXISTS images
-ADD
-    CONSTRAINT fk_images_Entity FOREIGN KEY (Entity_id) REFERENCES categories (id) ON DELETE
-SET
-    NULL ON UPDATE CASCADE;
+ALTER TABLE IF EXISTS images
+    ADD CONSTRAINT fk_images_entity FOREIGN KEY (entity_id) REFERENCES entities (id) ON DELETE SET NULL ON UPDATE CASCADE;
 
-ALTER TABLE
-    IF EXISTS products
-ADD
-    CONSTRAINT fk_products_brand FOREIGN KEY (brand_id) REFERENCES brands (id);
+ALTER TABLE IF EXISTS products
+    ADD CONSTRAINT fk_products_brand FOREIGN KEY (brand_id) REFERENCES brands (id);
 
-ALTER TABLE
-    IF EXISTS products
-ADD
-    CONSTRAINT fk_products_entity FOREIGN KEY (entity_id) REFERENCES entities (id);
+ALTER TABLE IF EXISTS products
+    ADD CONSTRAINT fk_products_entity FOREIGN KEY (entity_id) REFERENCES entities (id);
 
-ALTER TABLE
-    IF EXISTS articles
-ADD
-    CONSTRAINT fk_articles_Entity FOREIGN KEY (Entity_id) REFERENCES categories (id);
+ALTER TABLE IF EXISTS categories
+    ADD CONSTRAINT fk_categories_parent FOREIGN KEY (parent_id) REFERENCES categories (id);
 
-ALTER TABLE
-    IF EXISTS categories
-ADD
-    CONSTRAINT fk_categories_parent FOREIGN KEY (parent_id) REFERENCES categories (id);
-
-ALTER TABLE
-    IF EXISTS entities
-ADD
-    CONSTRAINT fk_entities_parent FOREIGN KEY (parent_id) REFERENCES entities (id);
-
-ALTER TABLE
-    IF EXISTS products
-ADD
-    CONSTRAINT fk_products_Entity FOREIGN KEY (Entity_id) REFERENCES categories (id);
+ALTER TABLE IF EXISTS entities
+    ADD CONSTRAINT fk_entities_parent FOREIGN KEY (parent_id) REFERENCES entities (id);
 
 -- FK to persons table (adjust table/column name if different)
-ALTER TABLE
-    invoices
-ADD
-    CONSTRAINT invoices_person_fk FOREIGN KEY (person_id) REFERENCES persons(id) ON DELETE RESTRICT;
+ALTER TABLE invoices
+    ADD CONSTRAINT invoices_person_fk FOREIGN KEY (person_id) REFERENCES persons (id) ON DELETE RESTRICT;
 
 -- Optional FK to products table (uncomment/adjust if product table exists)
-ALTER TABLE
-    invoice_items
-ADD
-    CONSTRAINT invoice_items_product_fk FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE RESTRICT;
+ALTER TABLE invoice_items
+    ADD CONSTRAINT invoice_items_product_fk FOREIGN KEY (product_id) REFERENCES products (id) ON DELETE RESTRICT;
 
-ALTER TABLE
-    invoice_items
-ADD
-    CONSTRAINT invoice_items_invoice_fk FOREIGN KEY (invoice_id) REFERENCES invoices(id) ON DELETE CASCADE;
+ALTER TABLE invoice_items
+    ADD CONSTRAINT invoice_items_invoice_fk FOREIGN KEY (invoice_id) REFERENCES invoices (id) ON DELETE CASCADE;
 
--- =====================================================
--- Trigger: auto-update updated_at column
--- =====================================================
-CREATE
-OR REPLACE FUNCTION update_updated_at_column() RETURNS trigger AS $ $ BEGIN NEW.updated_at = now();
 
-RETURN NEW;
-
-END;
-
-$ $ LANGUAGE plpgsql;
-
-DROP TRIGGER IF EXISTS set_updated_at_products ON products;
-
-CREATE TRIGGER set_updated_at_products BEFORE
-UPDATE
-    ON products FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
-DROP TRIGGER IF EXISTS set_updated_at_categories ON categories;
-
-CREATE TRIGGER set_updated_at_categories BEFORE
-UPDATE
-    ON categories FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
-DROP TRIGGER IF EXISTS set_updated_at_articles ON articles;
-
-CREATE TRIGGER set_updated_at_articles BEFORE
-UPDATE
-    ON articles FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
-DROP TRIGGER IF EXISTS set_updated_at_users ON users;
-
-CREATE TRIGGER set_updated_at_users BEFORE
-UPDATE
-    ON users FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
--- =====================================================
--- Trigger: normalize Persian digits
--- =====================================================
-CREATE
-OR REPLACE FUNCTION normalize_persian_digits() RETURNS trigger AS $ $ DECLARE joined text;
-
-normalized text;
-
-BEGIN -- Fix Persian digits in priority
-IF NEW.priority IS NOT NULL THEN NEW.priority := translate(NEW.priority, '۰۱۲۳۴۵۶۷۸۹', '0123456789');
-
-END IF;
-
--- Fix Persian digits in selectables array
-IF NEW.selectables IS NOT NULL THEN joined := array_to_string(NEW.selectables, '|');
-
-normalized := translate(joined, '۰۱۲۳۴۵۶۷۸۹', '0123456789');
-
-NEW.selectables := string_to_array(normalized, '|');
-
-END IF;
-
-RETURN NEW;
-
-END;
-
-$ $ LANGUAGE plpgsql;
-
-DROP TRIGGER IF EXISTS normalize_persian_digits_trigger ON parameters;
-
-CREATE TRIGGER normalize_persian_digits_trigger BEFORE
-INSERT
-    OR
-UPDATE
-    ON parameters FOR EACH ROW EXECUTE FUNCTION normalize_persian_digits();
-
--- =====================================================
--- Trigger: normalize Persian digits in product price/count
--- =====================================================
-CREATE
-OR REPLACE FUNCTION normalize_persian_digits_in_products() RETURNS trigger AS $ $ BEGIN IF NEW.price IS NOT NULL THEN NEW.price := translate(NEW.price, '۰۱۲۳۴۵۶۷۸۹', '0123456789');
-
-END IF;
-
-IF NEW.count IS NOT NULL THEN NEW.count := translate(NEW.count, '۰۱۲۳۴۵۶۷۸۹', '0123456789');
-
-END IF;
-
-RETURN NEW;
-
-END;
-
-$ $ LANGUAGE plpgsql;
-
-DROP TRIGGER IF EXISTS normalize_persian_digits_in_products_trigger ON products;
-
-CREATE TRIGGER normalize_persian_digits_in_products_trigger BEFORE
-INSERT
-    OR
-UPDATE
-    ON products FOR EACH ROW EXECUTE FUNCTION normalize_persian_digits_in_products();

@@ -2,7 +2,7 @@ run:
 	nodemon --signal SIGTERM
 
 start-postgres:
-	docker run -d --rm --name postgres -e POSTGRES_USER=root -p 5432:5432 -e DATABASE_PASSWORD=${DATABASE_PASSWORD}  -e POSTGRES_DB=caroption_go -e PGDATA=/var/lib/postgresql/data/pgdata -v "caroption_go":/var/lib/postgresql/data postgres:17.5
+	docker run -d --rm --name postgres -e POSTGRES_USER=root -p 5432:5432 -e POSTGRES_PASSWORD=${DATABASE_PASSWORD}  -e POSTGRES_DB=${DATABASE_DBNAME} -e PGDATA=/var/lib/postgresql/data/pgdata -v "caroption_go":/var/lib/postgresql/data postgres:17.5
 
 stop-postgres:
 	docker stop postgres
