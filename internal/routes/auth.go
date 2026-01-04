@@ -6,11 +6,9 @@ import (
 	"encoding/json"
 	"net/http"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/golang-jwt/jwt/v5"
 
 	"github.com/pzonouz/pzonouz-caroption-back-golang/internal/services"
 	"github.com/pzonouz/pzonouz-caroption-back-golang/internal/utils"
@@ -43,15 +41,28 @@ func GenerateAuthRoutes(mainRouter *chi.Mux, service services.Service) {
 				return
 			}
 
-			w.Header().Set("Content-Type", "application/json")
-
-			tokenData := &Token{Access: token}
+			http.SetCookie(
+				w,
+				&http.Cookie{
+					Name:     "token",
+					Value:    token,
+					Path:     "/",
+					HttpOnly: true,
+					Secure:   true,
+					SameSite: http.SameSiteStrictMode,
+					MaxAge:   60 * 60 * 24 * 365,
+				},
+			)
+			w.WriteHeader(http.StatusOK)
 			encoder := json.NewEncoder(w)
 
-			err = encoder.Encode(tokenData)
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
+			type data struct {
+				Status string `json:"status"`
 			}
+
+			responseData := data{Status: "OK"}
+
+			_ = encoder.Encode(responseData)
 		})
 		router.Post("/signup", func(w http.ResponseWriter, r *http.Request) {
 			user, err := utils.DecodeBody[services.User](r, w)
@@ -110,7 +121,9 @@ func GenerateAuthRoutes(mainRouter *chi.Mux, service services.Service) {
 				"Password Recovery",
 				"peymanecu@gmail.com",
 				"Peyman",
-				"<div>Click this <a href='"+os.Getenv("BASE_URL")+"/reset-password-callback/"+hexStr+"'>Link</a> for Password Recovery,Expire Time:24 Hour</div>",
+				"<div>Click this <a href='"+os.Getenv(
+					"BASE_URL",
+				)+"/reset-password-callback/"+hexStr+"'>Link</a> for Password Recovery,Expire Time:24 Hour</div>",
 			)
 			if err != nil {
 				http.Error(w, "", http.StatusInternalServerError)
@@ -168,42 +181,12 @@ func GenerateAuthRoutes(mainRouter *chi.Mux, service services.Service) {
 			},
 		)
 		router.Get("/me", func(w http.ResponseWriter, r *http.Request) {
-			AuthHeader := r.Header.Get("Authorization")
-			if AuthHeader == "" {
-				http.Error(w, "Missing Authorization header", http.StatusUnauthorized)
-
-				return
-			}
-
-			parts := strings.Split(AuthHeader, " ")
-			if len(parts) != 2 {
-				http.Error(w, "Invalid Authorization header format", http.StatusUnauthorized)
-
-				return
-			}
-
-			tokenString := parts[1]
-
-			claims := &utils.AuthClaims{}
-
-			token, err := jwt.ParseWithClaims(
-				tokenString,
-				claims,
-				func(token *jwt.Token) (any, error) {
-					return []byte(os.Getenv("SECRET")), nil
-				},
-				jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Alg()}),
-			)
-			if err != nil || !token.Valid {
-				http.Error(w, "Invalid token", http.StatusUnauthorized)
-
-				return
-			}
+			user := utils.GetUserFromRequest(w, r)
 
 			userData := &UserData{
-				ID:      claims.ID,
-				Email:   claims.Email,
-				IsAdmin: claims.IsAdmin,
+				ID:      user.ID,
+				Email:   user.Email,
+				IsAdmin: user.IsAdmin,
 			}
 
 			w.Header().Set("Content-Type", "application/json")

@@ -137,7 +137,7 @@ func (s *Service) GetCategory(id string) (Category, error) {
 		return category, err
 	}
 
-	query := "SELECT id,name,parent_id,description,priority,image_id,slug,show,generator,created_at,updated_at FROM categories WHERE id=$1"
+	query := "SELECT id,name,parent_id,description,priority,image_id,slug,show,created_at,updated_at FROM categories WHERE id=$1"
 	row := s.db.QueryRow(context.Background(), query, parsedUUID)
 
 	err = row.Scan(
@@ -230,7 +230,7 @@ func (s *Service) CreateCategory(category Category) error {
 }
 
 func (s *Service) EditCategory(id string, category Category) error {
-	query := "UPDATE categories SET name=$1,parent_id=$2,image_id=$3,priority=$4,slug=$5,show=$6 WHERE id=$7;"
+	query := "UPDATE categories SET name=$1,description=$2,parent_id=$3,image_id=$4,priority=$5,slug=$6,show=$7 WHERE id=$8;"
 	validate := utils.NewValidate()
 
 	err := validate.Struct(category)
@@ -242,6 +242,7 @@ func (s *Service) EditCategory(id string, category Category) error {
 		context.Background(),
 		query,
 		category.Name,
+		category.Description,
 		category.ParentID,
 		category.ImageID,
 		category.Priority,

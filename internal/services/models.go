@@ -16,6 +16,7 @@ type Child struct {
 	Priority    pgtype.Text `json:"priority"`
 	CreatedAt   time.Time   `json:"createdAt"`
 }
+
 type Category struct {
 	ID          pgtype.UUID `json:"id"`
 	Name        pgtype.Text `json:"name"`
@@ -31,6 +32,7 @@ type Category struct {
 	CreatedAt   time.Time   `json:"createdAt"`
 	UpdatedAt   time.Time   `json:"updatedAt"`
 }
+
 type Entity struct {
 	ID          pgtype.UUID   `json:"id"`
 	Name        pgtype.Text   `json:"name"`
@@ -185,6 +187,7 @@ type Invoice struct {
 	CreatedAt  time.Time     `json:"createdAt"`
 	UpdatedAt  time.Time     `json:"updatedAt"`
 }
+
 type Person struct {
 	ID          pgtype.UUID `json:"id"`
 	FirstName   pgtype.Text `json:"firstName"`

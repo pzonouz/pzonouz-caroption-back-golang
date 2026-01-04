@@ -174,21 +174,14 @@ func Uploader(w http.ResponseWriter, r *http.Request) error {
 }
 
 func GetUserFromRequest(w http.ResponseWriter, r *http.Request) User {
-	AuthHeader := r.Header.Get("Authorization")
-	if AuthHeader == "" {
+	AuthCookie, err := r.Cookie("token")
+	if err != nil {
 		http.Error(w, "Missing Authorization header", http.StatusUnauthorized)
 
 		return User{}
 	}
 
-	parts := strings.Split(AuthHeader, " ")
-	if len(parts) != 2 {
-		http.Error(w, "Invalid Authorization header format", http.StatusUnauthorized)
-
-		return User{}
-	}
-
-	tokenString := parts[1]
+	tokenString := AuthCookie.Value
 
 	claims := &AuthClaims{}
 
