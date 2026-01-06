@@ -104,7 +104,6 @@ func (s *Service) ListCategories() ([]Category, error) {
 		    c.id,
 		    i.image_url,
 		    p.name;
-		
 		`
 
 	rows, err := s.db.Query(context.Background(), query)
@@ -137,16 +136,35 @@ func (s *Service) GetCategory(id string) (Category, error) {
 		return category, err
 	}
 
-	query := "SELECT id,name,parent_id,description,priority,image_id,slug,show,created_at,updated_at FROM categories WHERE id=$1"
+	query := `SELECT
+    c.id,
+    c.name,
+    c.parent_id,
+    p.name AS parent_name,
+    c.description,
+    c.priority,
+    c.image_id,
+    i.image_url,
+    c.slug,
+    c.show,
+    c.created_at,
+    c.updated_at
+FROM categories AS c
+LEFT JOIN categories p ON c.parent_id = p.id
+LEFT JOIN images i ON c.image_id = i.id
+WHERE c.id = $1;
+`
 	row := s.db.QueryRow(context.Background(), query, parsedUUID)
 
 	err = row.Scan(
 		&category.ID,
 		&category.Name,
 		&category.ParentID,
+		&category.ParentName,
 		&category.Description,
 		&category.Priority,
 		&category.ImageID,
+		&category.ImageUrl,
 		&category.Slug,
 		&category.Show,
 		&category.CreatedAt,

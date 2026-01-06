@@ -27,6 +27,7 @@ func (s *Service) DeleteGeneratedProducts() ([]Product, error) {
 
 	return []Product{}, nil
 }
+
 func uniqueStrings(input []pgtype.Text) []pgtype.Text {
 	seen := make(map[pgtype.Text]bool)
 	result := []pgtype.Text{}
@@ -38,6 +39,7 @@ func uniqueStrings(input []pgtype.Text) []pgtype.Text {
 	}
 	return result
 }
+
 func (s *Service) GenerateProducts() ([]Product, error) {
 	ctx := context.Background()
 
@@ -242,7 +244,11 @@ func (s *Service) GenerateProducts() ([]Product, error) {
 				
 				`, newID, base.ID)
 			if err != nil {
-				return nil, fmt.Errorf("copying parameter values failed for base %s: %w", base.ID, err)
+				return nil, fmt.Errorf(
+					"copying parameter values failed for base %s: %w",
+					base.ID,
+					err,
+				)
 			}
 		}
 	}
@@ -256,57 +262,65 @@ func (s *Service) GenerateProducts() ([]Product, error) {
 
 	return []Product{}, nil
 }
+
 func (s *Service) ListProducts() ([]Product, error) {
 	query := `
-		SELECT
-		    p.id,
-		    p.name,
-		    p.description,
-		    p.info,
-		    p.price,
-		    p.count,
-		    p.entity_id,
-		    p.category_id,
-		    p.brand_id,
-		    p.slug,
-		    p.keywords,
-		    p.created_at,
-		    p.updated_at,
-		    p.generatable,
-		    p.generated,
-		    p.image_id,
-		    i.image_url,
-		    p.show,
-		    p.position,
-		    p.code,
-		    COALESCE(img_agg.image_ids, ARRAY[]::UUID[]) AS image_ids,
-		    COALESCE(img_agg.images, '[]'::JSON) AS images,
-		    COALESCE(ppv_agg.product_parameter_values, '[]'::JSON) AS product_parameter_values
-		FROM
-		    products p
-		    LEFT JOIN images i ON p.image_id = i.id
-		    -- Aggregate images separately
-		    LEFT JOIN (
-		        SELECT
-		            product_id,
-		            array_agg(id) AS image_ids,
-		            json_agg(json_build_object('id', id, 'imageUrl', image_url, 'name', name)) AS images
-		        FROM
-		            images
-		        WHERE
-		            product_id IS NOT NULL
-		        GROUP BY
-		            product_id) img_agg ON img_agg.product_id = p.id
-		    -- Aggregate product parameter values separately
-		    LEFT JOIN (
-		        SELECT
-		            product_id,
-		            json_agg(json_build_object('id', id, 'productId', product_id, 'parameterId', parameter_id, 'boolValue', bool_value, 'textValue', text_value, 'selectableValue', selectable_value, 'createdAt', created_at)) AS product_parameter_values
-		        FROM
-		            product_parameter_values
-		        GROUP BY
-		            product_id) ppv_agg ON ppv_agg.product_id = p.id;
-		
+	SELECT
+    p.id,
+    p.name,
+    p.description,
+    p.info,
+    p.price,
+    p.count,
+    p.entity_id,
+    p.category_id,
+    c.name AS category_name,
+    p.brand_id,
+    p.slug,
+    p.keywords,
+    p.created_at,
+    p.updated_at,
+    p.generatable,
+    p.generated,
+    p.image_id,
+    i.image_url,
+    p.show,
+    p.position,
+    p.code,
+    COALESCE(img_agg.image_ids, ARRAY[]::UUID[]) AS image_ids,
+    COALESCE(img_agg.images, '[]'::JSON) AS images,
+    COALESCE(ppv_agg.product_parameter_values, '[]'::JSON) AS product_parameter_values
+FROM products p
+LEFT JOIN categories c ON p.category_id = c.id
+LEFT JOIN images i ON p.image_id = i.id
+
+LEFT JOIN (
+    SELECT
+        product_id,
+        array_agg(id) AS image_ids,
+        json_agg(json_build_object('id', id, 'imageUrl', image_url, 'name', name)) AS images
+    FROM images
+    WHERE product_id IS NOT NULL
+    GROUP BY product_id
+) img_agg ON img_agg.product_id = p.id
+
+LEFT JOIN (
+    SELECT
+        product_id,
+        json_agg(
+            json_build_object(
+                'id', id,
+                'productId', product_id,
+                'parameterId', parameter_id,
+                'boolValue', bool_value,
+                'textValue', text_value,
+                'selectableValue', selectable_value,
+                'createdAt', created_at
+            )
+        ) AS product_parameter_values
+    FROM product_parameter_values
+    GROUP BY product_id
+) ppv_agg ON ppv_agg.product_id = p.id;
 		`
 
 	rows, err := s.db.Query(context.Background(), query)
@@ -322,7 +336,7 @@ func (s *Service) ListProducts() ([]Product, error) {
 
 		var productParameterValuesJSON []byte
 
-		if err := rows.Scan(&product.ID, &product.Name, &product.Description, &product.Info, &product.Price, &product.Count, &product.EntityID, &product.CategoryID, &product.BrandID, &product.Slug, &product.Keywords, &product.CreatedAt, &product.UpdatedAt, &product.Generatable, &product.Generated, &product.ImageID, &product.ImageUrl, &product.Show, &product.Position, &product.Code, &product.ImageIDs, &product.Images, &productParameterValuesJSON); err != nil {
+		if err := rows.Scan(&product.ID, &product.Name, &product.Description, &product.Info, &product.Price, &product.Count, &product.EntityID, &product.CategoryID, &product.CategoryName, &product.BrandID, &product.Slug, &product.Keywords, &product.CreatedAt, &product.UpdatedAt, &product.Generatable, &product.Generated, &product.ImageID, &product.ImageUrl, &product.Show, &product.Position, &product.Code, &product.ImageIDs, &product.Images, &productParameterValuesJSON); err != nil {
 			return []Product{}, err
 		}
 
@@ -338,6 +352,7 @@ func (s *Service) ListProducts() ([]Product, error) {
 
 	return products, nil
 }
+
 func (s *Service) RecentlyAddedProducts() ([]Product, error) {
 	delayedTime := time.Now().AddDate(0, 0, -30)
 	query := `
@@ -383,6 +398,7 @@ func (s *Service) RecentlyAddedProducts() ([]Product, error) {
 
 	return products, nil
 }
+
 func (s *Service) GetProduct(id string) (Product, error) {
 	var product Product
 
@@ -509,6 +525,7 @@ func (s *Service) GetProduct(id string) (Product, error) {
 
 	return product, nil
 }
+
 func (s *Service) GetProductBySlug(slug string) (Product, error) {
 	var product Product
 
@@ -631,6 +648,7 @@ func (s *Service) GetProductBySlug(slug string) (Product, error) {
 
 	return product, nil
 }
+
 func (s *Service) CreateProduct(product Product) error {
 	query := "INSERT INTO products (id,name,description,info,price,count,category_id,brand_id,image_id,slug,keywords,generatable,show,position,code) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15);"
 	validate := utils.NewValidate()
@@ -706,6 +724,7 @@ func (s *Service) CreateProduct(product Product) error {
 
 	return tx.Commit(context.Background())
 }
+
 func (s *Service) EditProduct(id string, product Product) error {
 	query := "UPDATE products SET name=$1,description=$2,info=$3,price=$4,count=$5,category_id=$6,brand_id=$7,image_id=$8,slug=$9,keywords=$10,generatable=$11,show=$12,position=$13,code=$14 WHERE id=$15;"
 	validate := utils.NewValidate()
@@ -809,6 +828,7 @@ func (s *Service) EditProduct(id string, product Product) error {
 
 	return tx.Commit(context.Background())
 }
+
 func (s *Service) DeleteProduct(id string) error {
 	query := "DELETE FROM products WHERE id=$1"
 
@@ -819,6 +839,7 @@ func (s *Service) DeleteProduct(id string) error {
 
 	return nil
 }
+
 func (s *Service) ProductsInCategory(category_id string) ([]Product, error) {
 	query := `
 		SELECT
@@ -873,6 +894,7 @@ func (s *Service) ProductsInCategory(category_id string) ([]Product, error) {
 
 	return products, nil
 }
+
 func (s *Service) ProductsInEntity(entity_id string) ([]Product, error) {
 	query := `
 		SELECT
@@ -931,6 +953,7 @@ func (s *Service) ProductsInEntity(entity_id string) ([]Product, error) {
 
 	return products, nil
 }
+
 func (s *Service) ProductsSearch(keywords string) ([]Product, error) {
 	query := `
 		SELECT

@@ -92,9 +92,10 @@ type Product struct {
 	Price                  pgtype.Text             `json:"price"`
 	Count                  pgtype.Text             `json:"count"`
 	CategoryID             pgtype.UUID             `json:"categoryId"`
+	CategoryName           pgtype.Text             `json:"categoryName"`
 	BrandID                pgtype.UUID             `json:"brandId"`
-	EntityID               pgtype.UUID             `json:"entityId"`
 	BrandName              pgtype.Text             `json:"brandName"`
+	EntityID               pgtype.UUID             `json:"entityId"`
 	Slug                   pgtype.Text             `json:"slug"`
 	ImageID                pgtype.UUID             `json:"imageId"`
 	ImageIDs               []pgtype.UUID           `json:"imageIds"`
