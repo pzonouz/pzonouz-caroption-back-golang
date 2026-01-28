@@ -16,6 +16,7 @@ func (s *Service) ListParameters() ([]Parameter, error) {
 		    p.description,
 		    p.type,
 		    p.parameter_group_id,
+				g.name,
 		    p.selectables,
 			g.name,
 		    p.priority,
@@ -36,7 +37,7 @@ func (s *Service) ListParameters() ([]Parameter, error) {
 
 	for rows.Next() {
 		var parameter Parameter
-		if err := rows.Scan(&parameter.ID, &parameter.Name, &parameter.Description, &parameter.Type, &parameter.ParameterGroupId, &parameter.Selectables, &parameter.ParameterGroup, &parameter.Priority, &parameter.CreatedAt); err != nil {
+		if err := rows.Scan(&parameter.ID, &parameter.Name, &parameter.Description, &parameter.Type, &parameter.ParameterGroupId, &parameter.ParameterGroup, &parameter.Selectables, &parameter.ParameterGroup, &parameter.Priority, &parameter.CreatedAt); err != nil {
 			return []Parameter{}, err
 		}
 
