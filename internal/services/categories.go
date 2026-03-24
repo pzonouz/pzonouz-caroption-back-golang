@@ -2,6 +2,11 @@ package services
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"strconv"
+	"strings"
 
 	"github.com/google/uuid"
 
@@ -28,7 +33,7 @@ func (s *Service) ListParentCategories() ([]Category, error) {
 		    LEFT JOIN categories c ON c.parent_id = p.id
 		    LEFT JOIN images i ON p.image_id = i.id
 		WHERE
-		    p.parent_id IS NULL
+		    p.parent_id IS NULL AND p.show IS TRUE
 		GROUP BY
 		    p.id,
 		    p.name,
@@ -52,6 +57,7 @@ func (s *Service) ListParentCategories() ([]Category, error) {
 	defer rows.Close()
 
 	var categories []Category
+
 	for rows.Next() {
 		var category Category
 		if err := rows.Scan(
@@ -126,6 +132,179 @@ func (s *Service) ListCategories() ([]Category, error) {
 	}
 
 	return categories, nil
+}
+
+func (s *Service) ListCategoriesWithSortFilterPagination(
+	sort string,
+	sortDirection string,
+	filters []string,
+	filterOperands []string,
+	filterConditions []string,
+	countInPage string,
+	offset string,
+	w http.ResponseWriter,
+) {
+	orderBy := ""
+
+	if sort != "" {
+		if sort == "parent_name" {
+			orderBy = fmt.Sprintf(
+				`ORDER BY p.name COLLATE "fa-IR-x-icu" %s`,
+				sortDirection,
+			)
+		} else {
+			orderBy = fmt.Sprintf(
+				`ORDER BY categories.%s COLLATE "fa-IR-x-icu" %s`,
+				sort,
+				sortDirection,
+			)
+		}
+	}
+
+	var filterBy strings.Builder
+	if len(filters) > 0 {
+		filterBy.WriteString("WHERE ")
+	}
+	// create map for filters
+	// filterMap := make(map[string]string)
+
+	for index, filter := range filters {
+		filterOperand := filterOperands[index]
+		filterCondition := filterConditions[index]
+
+		if filterOperand == "contains" {
+			filterOperand = "LIKE"
+
+			filterCondition = "%" + filterCondition + "%"
+		}
+
+		if len(filters) != 0 {
+			if filter == "parent_name" {
+				filterBy.WriteString(fmt.Sprintf(
+					`p.name %s '%s'`,
+					filterOperand,
+					filterCondition,
+				))
+			} else {
+				filterBy.WriteString(fmt.Sprintf(
+					`%s %s '%s'`,
+					"categories."+filter,
+					filterOperand,
+					filterCondition,
+				))
+			}
+		}
+
+		if len(filters)-1 > index {
+			filterBy.WriteString(" AND ")
+		}
+	}
+
+	pagedBy := ""
+	offsetNum := 0
+
+	if countInPage != "" {
+		limit, err := strconv.Atoi(countInPage)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+
+			return
+		}
+
+		if offset != "" {
+			offsetNum, err = strconv.Atoi(offset)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+
+				return
+			}
+		}
+
+		pagedBy = fmt.Sprintf(`LIMIT %d OFFSET %d`, limit, offsetNum)
+	}
+
+	query := fmt.Sprintf(`
+		SELECT
+		    categories.id,
+		    categories.name,
+		    categories.parent_id,
+		    p.name AS parent_name,
+		    categories.description,
+		    categories.priority,
+		    categories.image_id,
+		    images.image_url,
+		    categories.slug,
+		    categories.show,
+		    categories.created_at,
+		    categories.updated_at
+		FROM
+		    categories
+		    LEFT JOIN categories p ON categories.parent_id = p.id
+		    LEFT JOIN images ON categories.image_id = images.id
+		%s
+		GROUP BY
+		    categories.id,
+		    images.image_url,
+		    p.name %s %s
+		`, filterBy.String(), orderBy, pagedBy)
+
+	rows, err := s.db.Query(context.Background(), query)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+
+		return
+	}
+	defer rows.Close()
+
+	var categories []Category
+
+	for rows.Next() {
+		var category Category
+		if err := rows.Scan(&category.ID, &category.Name, &category.ParentID, &category.ParentName, &category.Description, &category.Priority, &category.ImageID, &category.ImageUrl, &category.Slug, &category.Show, &category.CreatedAt, &category.UpdatedAt); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+
+			return
+		}
+
+		category.Children = []Child{}
+
+		categories = append(categories, category)
+	}
+
+	w.Header().Add("Content-Type", "application/json")
+
+	newQuery := fmt.Sprintf(`
+		SELECT COUNT(*) FROM
+		    categories
+		    LEFT JOIN categories p ON categories.parent_id = p.id
+		    LEFT JOIN images ON categories.image_id = images.id
+		%s
+		`, filterBy.String())
+	row := s.db.QueryRow(context.Background(), newQuery)
+
+	var Count int32
+
+	err = row.Scan(&Count)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+
+		return
+	}
+
+	var categoriesWithTotalCount struct {
+		Rows       []Category `json:"rows"`
+		TotalCount int32      `json:"totalCount"`
+	}
+
+	categoriesWithTotalCount.Rows = categories
+	categoriesWithTotalCount.TotalCount = Count
+
+	err = json.NewEncoder(w).Encode(categoriesWithTotalCount)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+
+		return
+	}
 }
 
 func (s *Service) GetCategory(id string) (Category, error) {

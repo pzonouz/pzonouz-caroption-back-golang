@@ -2,11 +2,169 @@ package services
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"strconv"
+	"strings"
 
 	"github.com/google/uuid"
 
 	"github.com/pzonouz/pzonouz-caroption-back-golang/internal/utils"
 )
+
+func (s *Service) ListBrandsWithSortFilterPagination(
+	sort string,
+	sortDirection string,
+	filters []string,
+	filterOperands []string,
+	filterConditions []string,
+	countInPage string,
+	offset string,
+	w http.ResponseWriter,
+) {
+	orderBy := ""
+
+	if sort != "" {
+		if sort == "parent_name" {
+			orderBy = fmt.Sprintf(
+				`ORDER BY p.name COLLATE "fa-IR-x-icu" %s`,
+				sortDirection,
+			)
+		} else {
+			orderBy = fmt.Sprintf(
+				`ORDER BY brands.%s COLLATE "fa-IR-x-icu" %s`,
+				sort,
+				sortDirection,
+			)
+		}
+	}
+
+	var filterBy strings.Builder
+	if len(filters) > 0 {
+		filterBy.WriteString("WHERE ")
+	}
+
+	for index, filter := range filters {
+		filterOperand := filterOperands[index]
+		filterCondition := filterConditions[index]
+
+		if filterOperand == "contains" {
+			filterOperand = "LIKE"
+
+			filterCondition = "%" + filterCondition + "%"
+		}
+
+		if len(filters) != 0 {
+			if filter == "parent_name" {
+				filterBy.WriteString(fmt.Sprintf(
+					`p.name %s '%s'`,
+					// filter,
+					filterOperand,
+					filterCondition,
+				))
+			} else {
+				filterBy.WriteString(fmt.Sprintf(
+					`%s %s '%s'`,
+					"brands."+filter,
+					filterOperand,
+					filterCondition,
+				))
+			}
+		}
+
+		if len(filters)-1 > index {
+			filterBy.WriteString(" AND ")
+		}
+	}
+
+	pagedBy := ""
+	offsetNum := 0
+
+	if countInPage != "" {
+		limit, err := strconv.Atoi(countInPage)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+
+			return
+		}
+
+		if offset != "" {
+			offsetNum, err = strconv.Atoi(offset)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+
+				return
+			}
+		}
+
+		pagedBy = fmt.Sprintf(`LIMIT %d OFFSET %d`, limit, offsetNum)
+	}
+
+	query := fmt.Sprintf(`
+		SELECT
+		    brands.id,
+		    brands.name,
+		    brands.created_at
+		FROM
+		    brands
+		%s %s %s
+		`, filterBy.String(), orderBy, pagedBy)
+
+	rows, err := s.db.Query(context.Background(), query)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+
+		return
+	}
+	defer rows.Close()
+
+	var brands []Brand
+
+	for rows.Next() {
+		var brand Brand
+		if err := rows.Scan(&brand.ID, &brand.Name, &brand.CreatedAt); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+
+			return
+		}
+
+		brands = append(brands, brand)
+	}
+
+	w.Header().Add("Content-Type", "application/json")
+
+	newQuery := fmt.Sprintf(`
+		SELECT COUNT(*) FROM
+		    brands
+		%s
+		`, filterBy.String())
+	row := s.db.QueryRow(context.Background(), newQuery)
+
+	var Count int32
+
+	err = row.Scan(&Count)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+
+		return
+	}
+
+	var brandsWithTotalCount struct {
+		Rows       []Brand `json:"rows"`
+		TotalCount int32   `json:"totalCount"`
+	}
+
+	brandsWithTotalCount.Rows = brands
+	brandsWithTotalCount.TotalCount = Count
+
+	err = json.NewEncoder(w).Encode(brandsWithTotalCount)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+
+		return
+	}
+}
 
 func (s *Service) ListBrands() ([]Brand, error) {
 	query := `SELECT * FROM brands`

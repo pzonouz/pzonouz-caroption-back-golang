@@ -2,34 +2,125 @@ package services
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"strconv"
+	"strings"
 
 	"github.com/google/uuid"
 
 	"github.com/pzonouz/pzonouz-caroption-back-golang/internal/utils"
 )
 
-func (s *Service) ListParameters() ([]Parameter, error) {
-	query := `
+func (s *Service) ListParametersWithSortFilterPagination(
+	sort string,
+	sortDirection string,
+	filters []string,
+	filterOperands []string,
+	filterConditions []string,
+	countInPage string,
+	offset string,
+	w http.ResponseWriter,
+) {
+	orderBy := ""
+
+	if sort != "" {
+		if sort == "parameter_group" {
+			orderBy = fmt.Sprintf(
+				`ORDER BY pgs.name COLLATE "fa-IR-x-icu" %s`,
+				sortDirection,
+			)
+		} else {
+			orderBy = fmt.Sprintf(
+				`ORDER BY parameters.%s COLLATE "fa-IR-x-icu" %s`,
+				sort,
+				sortDirection,
+			)
+		}
+	}
+
+	var filterBy strings.Builder
+	if len(filters) > 0 {
+		filterBy.WriteString("WHERE ")
+	}
+
+	for index, filter := range filters {
+		filterOperand := filterOperands[index]
+		filterCondition := filterConditions[index]
+
+		if filterOperand == "contains" {
+			filterOperand = "LIKE"
+
+			filterCondition = "%" + filterCondition + "%"
+		}
+
+		if len(filters) != 0 {
+			if filter == "parameter_group" {
+				filterBy.WriteString(fmt.Sprintf(
+					`pgs.name %s '%s'`,
+					filterOperand,
+					filterCondition,
+				))
+			} else {
+				filterBy.WriteString(fmt.Sprintf(
+					`%s %s '%s'`,
+					"parameters."+filter,
+					filterOperand,
+					filterCondition,
+				))
+			}
+		}
+
+		if len(filters)-1 > index {
+			filterBy.WriteString(" AND ")
+		}
+	}
+
+	pagedBy := ""
+	offsetNum := 0
+
+	if countInPage != "" {
+		limit, err := strconv.Atoi(countInPage)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+
+			return
+		}
+
+		if offset != "" {
+			offsetNum, err = strconv.Atoi(offset)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+
+				return
+			}
+		}
+
+		pagedBy = fmt.Sprintf(`LIMIT %d OFFSET %d`, limit, offsetNum)
+	}
+
+	query := fmt.Sprintf(`
 		SELECT
-		    p.id,
-		    p.name,
-		    p.description,
-		    p.type,
-		    p.parameter_group_id,
-				g.name,
-		    p.selectables,
-			g.name,
-		    p.priority,
-		    p.created_at
+		    parameters.id,
+		    parameters.name,
+		    parameters.description,
+		    parameters.type,
+		    parameters.parameter_group_id,
+		    pgs.name,
+			  parameters.selectables,
+			  parameters.priority,
+		    parameters.created_at
 		FROM
-		    parameters AS p
-		    LEFT JOIN parameter_groups AS g ON p.parameter_group_id = g.id
-		ORDER BY
-		    p.priority`
+		    parameters
+		    LEFT JOIN public.parameter_groups AS pgs ON pgs.id = parameters.parameter_group_id
+	   		%s %s %s`, filterBy.String(), orderBy, pagedBy)
 
 	rows, err := s.db.Query(context.Background(), query)
 	if err != nil {
-		return []Parameter{}, err
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+
+		return
 	}
 	defer rows.Close()
 
@@ -37,14 +128,49 @@ func (s *Service) ListParameters() ([]Parameter, error) {
 
 	for rows.Next() {
 		var parameter Parameter
-		if err := rows.Scan(&parameter.ID, &parameter.Name, &parameter.Description, &parameter.Type, &parameter.ParameterGroupId, &parameter.ParameterGroup, &parameter.Selectables, &parameter.ParameterGroup, &parameter.Priority, &parameter.CreatedAt); err != nil {
-			return []Parameter{}, err
+		if err := rows.Scan(&parameter.ID, &parameter.Name, &parameter.Description, &parameter.Type, &parameter.ParameterGroupId, &parameter.ParameterGroup, &parameter.Selectables, &parameter.Priority, &parameter.CreatedAt); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+
+			return
 		}
 
 		parameters = append(parameters, parameter)
 	}
 
-	return parameters, nil
+	w.Header().Add("Content-Type", "application/json")
+
+	newQuery := fmt.Sprintf(`
+		SELECT COUNT(*) FROM
+		    parameters 
+		LEFT JOIN public.parameter_groups AS pgs 
+ON pgs.id = parameters.parameter_group_id
+		%s
+		`, filterBy.String())
+	row := s.db.QueryRow(context.Background(), newQuery)
+
+	var Count int32
+
+	err = row.Scan(&Count)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+
+		return
+	}
+
+	var parametersWithTotalCount struct {
+		Rows       []Parameter `json:"rows"`
+		TotalCount int32       `json:"totalCount"`
+	}
+
+	parametersWithTotalCount.Rows = parameters
+	parametersWithTotalCount.TotalCount = Count
+
+	err = json.NewEncoder(w).Encode(parametersWithTotalCount)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+
+		return
+	}
 }
 
 func (s *Service) ListParametersByCategory(category_id string) ([]Parameter, error) {
@@ -102,19 +228,22 @@ func (s *Service) GetParameter(id string) (Parameter, error) {
 	}
 
 	query := `
-		SELECT
-		    id,
-		    name,
-		    description,
-		    type,
-		    parameter_group_id,
-		    selectables,
-		    priority,
-		    created_at
-		FROM
-		    parameters
-		WHERE
-		    id = $1`
+	SELECT
+    p.id,
+    p.name,
+    p.description,
+    p.type,
+    p.parameter_group_id,
+    p.selectables,
+    p.priority,
+    p.created_at
+FROM
+    parameters p
+LEFT JOIN
+    parameter_groups pg ON p.parameter_group_id = pg.id
+WHERE
+    p.id = $1
+		`
 	row := s.db.QueryRow(context.Background(), query, parsedUUID)
 
 	err = row.Scan(

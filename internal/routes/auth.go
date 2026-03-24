@@ -48,9 +48,9 @@ func GenerateAuthRoutes(mainRouter *chi.Mux, service services.Service) {
 					Value:    token,
 					Path:     "/",
 					HttpOnly: true,
-					Secure:   true,
-					SameSite: http.SameSiteStrictMode,
-					MaxAge:   60 * 60 * 24 * 365,
+					Secure:   false,
+					// SameSite: http.SameSiteNoneMode,
+					MaxAge: 60 * 60 * 24 * 365,
 				},
 			)
 			w.WriteHeader(http.StatusOK)

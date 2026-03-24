@@ -218,3 +218,10 @@ func ReplacePersianDigits(s string) string {
 
 	return s
 }
+
+func DefaultInput(input string, defaultOutput string) string {
+	if input == "" {
+		return defaultOutput
+	}
+	return input
+}

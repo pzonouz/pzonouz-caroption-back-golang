@@ -4,7 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -31,6 +33,7 @@ func (s *Service) DeleteGeneratedProducts() ([]Product, error) {
 func uniqueStrings(input []pgtype.Text) []pgtype.Text {
 	seen := make(map[pgtype.Text]bool)
 	result := []pgtype.Text{}
+
 	for _, v := range input {
 		if !seen[v] {
 			seen[v] = true
@@ -351,6 +354,546 @@ LEFT JOIN (
 	}
 
 	return products, nil
+}
+
+func (s *Service) ListProductForAccountsWithSortFilterPagination(
+	sort string,
+	sortDirection string,
+	filters []string,
+	filterOperands []string,
+	filterConditions []string,
+	countInPage string,
+	offset string,
+	w http.ResponseWriter,
+) {
+	orderBy := ""
+
+	if sort != "" {
+		switch sort {
+		case "category_name":
+			orderBy = fmt.Sprintf(
+				`ORDER BY categories.name COLLATE "fa-IR-x-icu" %s`,
+				sortDirection,
+			)
+		case "price":
+			orderBy = fmt.Sprintf(
+				`ORDER BY products.price::bigint %s`,
+				sortDirection,
+			)
+		case "count":
+			orderBy = fmt.Sprintf(
+				`ORDER BY products.count::bigint %s`,
+				sortDirection,
+			)
+		default:
+			orderBy = fmt.Sprintf(
+				`ORDER BY products.%s COLLATE "fa-IR-x-icu" %s`,
+				sort,
+				sortDirection,
+			)
+		}
+	}
+
+	var filterBy strings.Builder
+	if len(filters) > 0 {
+		filterBy.WriteString("WHERE products.generated IS false AND ")
+	} else {
+		filterBy.WriteString("WHERE products.generated IS false ")
+	}
+	// create map for filters
+	// filterMap := make(map[string]string)
+
+	for index, filter := range filters {
+		filterOperand := filterOperands[index]
+		filterCondition := filterConditions[index]
+
+		if filterOperand == "contains" {
+			filterOperand = "LIKE"
+
+			filterCondition = "%" + filterCondition + "%"
+		}
+
+		if len(filters) != 0 {
+			switch filter {
+			case "category_name":
+				filterBy.WriteString(fmt.Sprintf(
+					`categories.name %s '%s'`,
+					filterOperand,
+					filterCondition,
+				))
+			case "price":
+				filterBy.WriteString(fmt.Sprintf(
+					`products.price::bigint %s '%s'`,
+					filterOperand,
+					filterCondition,
+				))
+			case "count":
+				filterBy.WriteString(fmt.Sprintf(
+					`products.count::bigint %s '%s'`,
+					filterOperand,
+					filterCondition,
+				))
+			default:
+				filterBy.WriteString(fmt.Sprintf(
+					`%s %s '%s'`,
+					"products."+filter,
+					filterOperand,
+					filterCondition,
+				))
+			}
+		}
+
+		if len(filters)-1 > index {
+			filterBy.WriteString(" AND ")
+		}
+	}
+
+	pagedBy := ""
+	offsetNum := 0
+
+	if countInPage != "" {
+		limit, err := strconv.Atoi(countInPage)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+
+			return
+		}
+
+		if offset != "" {
+			offsetNum, err = strconv.Atoi(offset)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+
+				return
+			}
+		}
+
+		pagedBy = fmt.Sprintf(`LIMIT %d OFFSET %d`, limit, offsetNum)
+	}
+
+	query := fmt.Sprintf(`
+	SELECT
+    products.id,
+    products.name,
+    products.description,
+    products.info,
+    products.price,
+    products.count,
+    products.entity_id,
+    products.category_id,
+    categories.name,
+    products.brand_id,
+    products.slug,
+    products.keywords,
+    products.created_at,
+    products.updated_at,
+    products.generatable,
+    products.generated,
+    products.image_id,
+    i.image_url,
+    products.show,
+    products.position,
+    products.code,
+		brands.name,
+    COALESCE(img_agg.image_ids, ARRAY[]::UUID[]) AS image_ids,
+    COALESCE(img_agg.images, '[]'::JSON) AS images,
+    COALESCE(ppv_agg.product_parameter_values, '[]'::JSON) AS product_parameter_values
+FROM products 
+LEFT JOIN brands ON products.brand_id=brands.id
+LEFT JOIN categories ON products.category_id = categories.id
+LEFT JOIN images i ON products.image_id = i.id
+
+LEFT JOIN (
+    SELECT
+        product_id,
+        array_agg(id) AS image_ids,
+        json_agg(json_build_object('id', id, 'imageUrl', image_url, 'name', name)) AS images
+    FROM images
+    WHERE product_id IS NOT NULL
+    GROUP BY product_id
+) img_agg ON img_agg.product_id = products.id
+
+LEFT JOIN (
+    SELECT
+        product_id,
+        json_agg(
+            json_build_object(
+                'id', id,
+                'productId', product_id,
+                'parameterId', parameter_id,
+                'boolValue', bool_value,
+                'textValue', text_value,
+                'selectableValue', selectable_value,
+                'createdAt', created_at
+            )
+        ) AS product_parameter_values
+    FROM product_parameter_values
+    GROUP BY product_id
+) ppv_agg ON ppv_agg.product_id = products.id %s %s %s;
+		`, filterBy.String(), orderBy, pagedBy)
+
+	rows, err := s.db.Query(context.Background(), query)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+
+		return
+	}
+	defer rows.Close()
+
+	var products []Product
+
+	for rows.Next() {
+		var product Product
+		if err := rows.Scan(&product.ID, &product.Name, &product.Description, &product.Info, &product.Price, &product.Count, &product.EntityID, &product.CategoryID, &product.CategoryName, &product.BrandID, &product.Slug, &product.Keywords, &product.CreatedAt, &product.UpdatedAt, &product.Generatable, &product.Generated, &product.ImageID, &product.ImageUrl, &product.Show, &product.Position, &product.Code, &product.BrandName, &product.ImageIDs, &product.Images, &product.ProductParameterValues); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+
+			return
+		}
+
+		products = append(products, product)
+	}
+
+	w.Header().Add("Content-Type", "application/json")
+
+	newQuery := fmt.Sprintf(`
+		SELECT COUNT(*) FROM
+		    products
+		LEFT JOIN categories ON products.category_id = categories.id
+LEFT JOIN images i ON products.image_id = i.id
+
+LEFT JOIN (
+    SELECT
+        product_id,
+        array_agg(id) AS image_ids,
+        json_agg(json_build_object('id', id, 'imageUrl', image_url, 'name', name)) AS images
+    FROM images
+    WHERE product_id IS NOT NULL
+    GROUP BY product_id
+) img_agg ON img_agg.product_id = products.id
+
+LEFT JOIN (
+    SELECT
+        product_id,
+        json_agg(
+            json_build_object(
+                'id', id,
+                'productId', product_id,
+                'parameterId', parameter_id,
+                'boolValue', bool_value,
+                'textValue', text_value,
+                'selectableValue', selectable_value,
+                'createdAt', created_at
+            )
+        ) AS product_parameter_values
+    FROM product_parameter_values
+    GROUP BY product_id
+) ppv_agg ON ppv_agg.product_id = products.id %s ;
+
+		`, filterBy.String())
+	row := s.db.QueryRow(context.Background(), newQuery)
+
+	var Count int32
+
+	err = row.Scan(&Count)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+
+		return
+	}
+
+	var productsWithTotalCount struct {
+		Rows       []Product `json:"rows"`
+		TotalCount int32     `json:"totalCount"`
+	}
+
+	productsWithTotalCount.Rows = products
+	productsWithTotalCount.TotalCount = Count
+
+	err = json.NewEncoder(w).Encode(productsWithTotalCount)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+
+		return
+	}
+}
+
+func (s *Service) ListProductsWithSortFilterPagination(
+	sort string,
+	sortDirection string,
+	filters []string,
+	filterOperands []string,
+	filterConditions []string,
+	countInPage string,
+	offset string,
+	w http.ResponseWriter,
+) {
+	orderBy := ""
+
+	if sort != "" {
+		switch sort {
+		case "category_name":
+			orderBy = fmt.Sprintf(
+				`ORDER BY categories.name COLLATE "fa-IR-x-icu" %s`,
+				sortDirection,
+			)
+		case "price":
+			orderBy = fmt.Sprintf(
+				`ORDER BY products.price::bigint %s`,
+				sortDirection,
+			)
+		case "code":
+			orderBy = fmt.Sprintf(
+				`ORDER BY products.code::bigint %s`,
+				sortDirection,
+			)
+		case "count":
+			orderBy = fmt.Sprintf(
+				`ORDER BY products.count::bigint %s`,
+				sortDirection,
+			)
+		case "generated":
+			orderBy = fmt.Sprintf(
+				`ORDER BY products.generated %s`,
+				sortDirection,
+			)
+		case "position":
+			orderBy = fmt.Sprintf(
+				`ORDER BY products.position %s`,
+				sortDirection,
+			)
+		default:
+			orderBy = fmt.Sprintf(
+				`ORDER BY products.%s COLLATE "fa-IR-x-icu" %s`,
+				sort,
+				sortDirection,
+			)
+		}
+	}
+
+	var filterBy strings.Builder
+	if len(filters) > 0 {
+		filterBy.WriteString("WHERE ")
+	}
+	// create map for filters
+	// filterMap := make(map[string]string)
+
+	for index, filter := range filters {
+		filterOperand := filterOperands[index]
+		filterCondition := filterConditions[index]
+
+		if filterOperand == "contains" {
+			filterOperand = "ILIKE"
+
+			filterCondition = "%" + filterCondition + "%"
+		}
+
+		if filterOperand == "notcontains" {
+			filterOperand = "NOT ILIKE"
+			filterCondition = "%" + filterCondition + "%"
+		}
+
+		if len(filters) != 0 {
+			switch filter {
+			case "category_name":
+				filterBy.WriteString(fmt.Sprintf(
+					`categories.name %s '%s'`,
+					filterOperand,
+					filterCondition,
+				))
+			case "price":
+				filterBy.WriteString(fmt.Sprintf(
+					`products.price::bigint %s '%s'`,
+					filterOperand,
+					filterCondition,
+				))
+			case "count":
+				filterBy.WriteString(fmt.Sprintf(
+					`products.count::bigint %s '%s'`,
+					filterOperand,
+					filterCondition,
+				))
+			default:
+				filterBy.WriteString(fmt.Sprintf(
+					`%s %s '%s'`,
+					"products."+filter,
+					filterOperand,
+					filterCondition,
+				))
+			}
+		}
+
+		if len(filters)-1 > index {
+			filterBy.WriteString(" AND ")
+		}
+	}
+
+	pagedBy := ""
+	offsetNum := 0
+
+	if countInPage != "" {
+		limit, err := strconv.Atoi(countInPage)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+
+			return
+		}
+
+		if offset != "" {
+			offsetNum, err = strconv.Atoi(offset)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+
+				return
+			}
+		}
+
+		pagedBy = fmt.Sprintf(`LIMIT %d OFFSET %d`, limit, offsetNum)
+	}
+
+	query := fmt.Sprintf(`
+	SELECT
+    products.id,
+    products.name,
+    products.description,
+    products.info,
+    products.price,
+    products.count,
+    products.entity_id,
+    products.category_id,
+    categories.name,
+    products.brand_id,
+    products.slug,
+    products.keywords,
+    products.created_at,
+    products.updated_at,
+    products.generatable,
+    products.generated,
+    products.image_id,
+    i.image_url,
+    products.show,
+    products.position,
+    products.code,
+		brands.name,
+    COALESCE(img_agg.image_ids, ARRAY[]::UUID[]) AS image_ids,
+    COALESCE(img_agg.images, '[]'::JSON) AS images,
+    COALESCE(ppv_agg.product_parameter_values, '[]'::JSON) AS product_parameter_values
+FROM products 
+LEFT JOIN brands ON products.brand_id=brands.id
+LEFT JOIN categories ON products.category_id = categories.id
+LEFT JOIN images i ON products.image_id = i.id
+
+LEFT JOIN (
+    SELECT
+        product_id,
+        array_agg(id) AS image_ids,
+        json_agg(json_build_object('id', id, 'imageUrl', image_url, 'name', name)) AS images
+    FROM images
+    WHERE product_id IS NOT NULL
+    GROUP BY product_id
+) img_agg ON img_agg.product_id = products.id
+
+LEFT JOIN (
+    SELECT
+        product_id,
+        json_agg(
+            json_build_object(
+                'id', id,
+                'productId', product_id,
+                'parameterId', parameter_id,
+                'boolValue', bool_value,
+                'textValue', text_value,
+                'selectableValue', selectable_value,
+                'createdAt', created_at
+            )
+        ) AS product_parameter_values
+    FROM product_parameter_values
+    GROUP BY product_id
+) ppv_agg ON ppv_agg.product_id = products.id %s %s %s;
+		`, filterBy.String(), orderBy, pagedBy)
+
+	rows, err := s.db.Query(context.Background(), query)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+
+		return
+	}
+	defer rows.Close()
+
+	var products []Product
+
+	for rows.Next() {
+		var product Product
+		if err := rows.Scan(&product.ID, &product.Name, &product.Description, &product.Info, &product.Price, &product.Count, &product.EntityID, &product.CategoryID, &product.CategoryName, &product.BrandID, &product.Slug, &product.Keywords, &product.CreatedAt, &product.UpdatedAt, &product.Generatable, &product.Generated, &product.ImageID, &product.ImageUrl, &product.Show, &product.Position, &product.Code, &product.BrandName, &product.ImageIDs, &product.Images, &product.ProductParameterValues); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+
+			return
+		}
+
+		products = append(products, product)
+	}
+
+	w.Header().Add("Content-Type", "application/json")
+
+	newQuery := fmt.Sprintf(`
+		SELECT COUNT(*) FROM
+		    products
+		LEFT JOIN categories ON products.category_id = categories.id
+LEFT JOIN images i ON products.image_id = i.id
+
+LEFT JOIN (
+    SELECT
+        product_id,
+        array_agg(id) AS image_ids,
+        json_agg(json_build_object('id', id, 'imageUrl', image_url, 'name', name)) AS images
+    FROM images
+    WHERE product_id IS NOT NULL
+    GROUP BY product_id
+) img_agg ON img_agg.product_id = products.id
+
+LEFT JOIN (
+    SELECT
+        product_id,
+        json_agg(
+            json_build_object(
+                'id', id,
+                'productId', product_id,
+                'parameterId', parameter_id,
+                'boolValue', bool_value,
+                'textValue', text_value,
+                'selectableValue', selectable_value,
+                'createdAt', created_at
+            )
+        ) AS product_parameter_values
+    FROM product_parameter_values
+    GROUP BY product_id
+) ppv_agg ON ppv_agg.product_id = products.id %s ;
+
+		`, filterBy.String())
+	row := s.db.QueryRow(context.Background(), newQuery)
+
+	var Count int32
+
+	err = row.Scan(&Count)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+
+		return
+	}
+
+	var productsWithTotalCount struct {
+		Rows       []Product `json:"rows"`
+		TotalCount int32     `json:"totalCount"`
+	}
+
+	productsWithTotalCount.Rows = products
+	productsWithTotalCount.TotalCount = Count
+
+	err = json.NewEncoder(w).Encode(productsWithTotalCount)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+
+		return
+	}
 }
 
 func (s *Service) RecentlyAddedProducts() ([]Product, error) {

@@ -2,6 +2,11 @@ package services
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -13,31 +18,34 @@ func (s *Service) CreateInvoice(inv Invoice) error {
 	if err != nil {
 		return err
 	}
+
 	query := `
-		INSERT INTO invoices (id, person_id, type, total, discount, net_total, notes, created_at, updated_at)
-		    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`
+		INSERT INTO invoices (id, person_id, type, discount, notes,date, created_at, updated_at)
+		    VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`
 	invoiceId := uuid.New()
 
 	_, err = tx.Exec(context.Background(), query,
 		invoiceId,
 		inv.PersonID,
 		inv.Type,
-		inv.Total,
 		inv.Discount,
-		inv.NetTotal,
 		inv.Notes,
+		inv.Date,
 		time.Now(),
 		time.Now(),
 	)
 	if err != nil {
 		tx.Rollback(context.Background())
+
 		return err
 	}
+
 	for _, item := range inv.Items {
 		itemQuery := `
-			INSERT INTO invoice_items (id, invoice_id, description, price, product_id, count, total, discount, net_total)
-			    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`
+			INSERT INTO invoice_items (id, invoice_id, description, price, product_id, count, discount)
+			    VALUES ($1, $2, $3, $4, $5, $6, $7)`
 		id := uuid.New()
+
 		_, err = tx.Exec(context.Background(), itemQuery,
 			id,
 			invoiceId,
@@ -45,47 +53,72 @@ func (s *Service) CreateInvoice(inv Invoice) error {
 			item.Price,
 			item.ProductID,
 			item.Count,
-			item.Total,
 			item.Discount,
-			item.NetTotal,
 		)
 		if err != nil {
 			tx.Rollback(context.Background())
+
 			return err
 		}
 	}
+
 	err = tx.Commit(context.Background())
 	if err != nil {
 		return err
 	}
+
 	return nil
 }
 
 func (s *Service) GetInvoice(id string) (Invoice, error) {
 	query := `
-		SELECT
-		    id,
-		    person_id,
-		    type,
-		    total,
-		    net_total,
-		    discount,
-		    notes,
-		    created_at,
-		    updated_at
-		FROM
-		    invoices
-		WHERE
-		    id = $1`
+	SELECT
+    invoices.id,
+    invoices.person_id,
+    CONCAT(persons.name, ' ', persons.first_name) AS person_name,
+    invoices.type,
+    invoices.discount,
+    invoices.notes,
+    invoices.number,
+    COALESCE(json_agg(
+        json_build_object(
+            'id', invoice_items.id,
+            'invoiceID', invoice_items.invoice_id,
+            'description', invoice_items.description,
+            'price', invoice_items.price,
+            'productID', invoice_items.product_id,
+            'productName', products.name,
+            'count', invoice_items.count
+        )
+    )FILTER (WHERE invoice_items.id IS NOT NULL),'[]') AS items,
+    invoices.date,
+    invoices.created_at,
+    invoices.updated_at
+FROM
+    invoices
+    LEFT JOIN persons ON invoices.person_id = persons.id
+    LEFT JOIN invoice_items ON invoices.id = invoice_items.invoice_id
+    LEFT JOIN products ON invoice_items.product_id = products.id
+WHERE
+    invoices.id = $1
+GROUP BY
+    invoices.id,
+    persons.name,
+    persons.first_name;
+	`
+
 	var inv Invoice
+
 	err := s.db.QueryRow(context.Background(), query, id).Scan(
 		&inv.ID,
 		&inv.PersonID,
+		&inv.PersonName,
 		&inv.Type,
-		&inv.Total,
-		&inv.NetTotal,
 		&inv.Discount,
 		&inv.Notes,
+		&inv.Number,
+		&inv.Items,
+		&inv.Date,
 		&inv.CreatedAt,
 		&inv.UpdatedAt,
 	)
@@ -96,58 +129,184 @@ func (s *Service) GetInvoice(id string) (Invoice, error) {
 	return inv, nil
 }
 
-func (s *Service) ListInvoices() ([]Invoice, error) {
-	query := `
+func (s *Service) ListInvoicesWithSortFilterPagination(
+	sort string,
+	sortDirection string,
+	filters []string,
+	filterOperands []string,
+	filterConditions []string,
+	countInPage string,
+	offset string,
+	w http.ResponseWriter,
+) {
+	orderBy := ""
+
+	if sort != "" {
+		if sort == "parent_name" {
+			orderBy = fmt.Sprintf(
+				`ORDER BY p.name COLLATE "fa-IR-x-icu" %s`,
+				sortDirection,
+			)
+		} else {
+			orderBy = fmt.Sprintf(
+				`ORDER BY invoices.%s COLLATE "fa-IR-x-icu" %s`,
+				sort,
+				sortDirection,
+			)
+		}
+	}
+
+	var filterBy strings.Builder
+	if len(filters) > 0 {
+		filterBy.WriteString("WHERE ")
+	}
+
+	for index, filter := range filters {
+		filterOperand := filterOperands[index]
+		filterCondition := filterConditions[index]
+
+		if filterOperand == "contains" {
+			filterOperand = "LIKE"
+
+			filterCondition = "%" + filterCondition + "%"
+		}
+
+		if len(filters) != 0 {
+			if filter == "parent_name" {
+				filterBy.WriteString(fmt.Sprintf(
+					`p.name %s '%s'`,
+					filterOperand,
+					filterCondition,
+				))
+			} else {
+				filterBy.WriteString(fmt.Sprintf(
+					`%s %s '%s'`,
+					"invoices."+filter,
+					filterOperand,
+					filterCondition,
+				))
+			}
+		}
+
+		if len(filters)-1 > index {
+			filterBy.WriteString(" AND ")
+		}
+	}
+
+	pagedBy := ""
+	offsetNum := 0
+
+	if countInPage != "" {
+		limit, err := strconv.Atoi(countInPage)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+
+			return
+		}
+
+		if offset != "" {
+			offsetNum, err = strconv.Atoi(offset)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+
+				return
+			}
+		}
+
+		pagedBy = fmt.Sprintf(`LIMIT %d OFFSET %d`, limit, offsetNum)
+	}
+
+	query := fmt.Sprintf(`
 		SELECT
-		    i.id,
-		    i.person_id,
-		    CONCAT(p.last_name, ' ', p.first_name) AS person_name,
-		    i.type,
-		    i.total,
-		    i.discount,
-		    i.notes,
-		    i.number,
-		    json_agg(json_build_object('id', ii.id, 'invoiceID', ii.invoice_id, 'description', ii.description, 'price', CAST(ii.price AS INTEGER), 'productID', ii.product_id, 'count', ii.count)) AS items,
-		    i.created_at,
-		    i.updated_at
-		FROM
-		    invoices AS i
-		    LEFT JOIN persons p ON i.person_id = p.id
-		    LEFT JOIN invoice_items ii ON i.id = ii.invoice_id
-		GROUP BY
-		    i.id,
-		    p.last_name,
-		    p.first_name`
+    invoices.id,
+    invoices.person_id,
+    CONCAT(persons.name, ' ', persons.first_name) AS person_name,
+    invoices.type,
+    invoices.discount,
+    invoices.notes,
+    invoices.number,
+    COALESCE(json_agg(
+        json_build_object(
+            'id', invoice_items.id,
+            'invoiceID', invoice_items.invoice_id,
+            'description', invoice_items.description,
+            'price', invoice_items.price,
+            'productID', invoice_items.product_id,
+            'count', invoice_items.count,
+		        'productName', products.name
+        )
+    )FILTER (WHERE invoice_items.id IS NOT NULL),'[]') AS items,
+    invoices.date,
+    invoices.created_at,
+    invoices.updated_at
+FROM
+    invoices
+    LEFT JOIN persons ON invoices.person_id = persons.id
+    LEFT JOIN invoice_items ON invoices.id = invoice_items.invoice_id
+    LEFT JOIN products ON invoice_items.product_id = products.id
+    %s
+GROUP BY
+    invoices.id,
+    persons.name,
+    persons.first_name
+    %s %s;
+		`,
+		filterBy.String(), orderBy, pagedBy)
+
 	rows, err := s.db.Query(context.Background(), query)
 	if err != nil {
-		return nil, err
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+
+		return
 	}
 	defer rows.Close()
 
 	var invoices []Invoice
 
 	for rows.Next() {
-		var inv Invoice
-		if err := rows.Scan(
-			&inv.ID,
-			&inv.PersonID,
-			&inv.PersonName,
-			&inv.Type,
-			&inv.Total,
-			&inv.Discount,
-			&inv.Notes,
-			&inv.Number,
-			&inv.Items,
-			&inv.CreatedAt,
-			&inv.UpdatedAt,
-		); err != nil {
-			return nil, err
+		var invoice Invoice
+		if err := rows.Scan(&invoice.ID, &invoice.PersonID, &invoice.PersonName, &invoice.Type, &invoice.Discount, &invoice.Notes, &invoice.Number, &invoice.Items, &invoice.Date, &invoice.CreatedAt, &invoice.UpdatedAt); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+
+			return
 		}
 
-		invoices = append(invoices, inv)
+		invoices = append(invoices, invoice)
 	}
 
-	return invoices, nil
+	w.Header().Add("Content-Type", "application/json")
+
+	newQuery := fmt.Sprintf(`
+		SELECT COUNT(*) FROM
+		    invoices
+		    LEFT JOIN persons ON invoices.person_id = persons.id
+		%s
+		`, filterBy.String())
+	row := s.db.QueryRow(context.Background(), newQuery)
+
+	var Count int32
+
+	err = row.Scan(&Count)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+
+		return
+	}
+
+	var invoicesWithTotalCount struct {
+		Rows       []Invoice `json:"rows"`
+		TotalCount int32     `json:"totalCount"`
+	}
+
+	invoicesWithTotalCount.Rows = invoices
+	invoicesWithTotalCount.TotalCount = Count
+
+	err = json.NewEncoder(w).Encode(invoicesWithTotalCount)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+
+		return
+	}
 }
 
 func (s *Service) EditInvoice(id string, invoice Invoice) error {
@@ -157,42 +316,44 @@ func (s *Service) EditInvoice(id string, invoice Invoice) error {
 	if err != nil {
 		return err
 	}
+	// ✅ Defer rollback ensures the tx is closed on panic or early return.
+	// (If tx is already committed, rollback safely does nothing in pgx)
+	defer tx.Rollback(ctx)
 
-	// ✅ Proper UPDATE query
 	updateInvoiceQuery := `
 		UPDATE
 		    invoices
 		SET
 		    person_id = $1,
 		    type = $2,
-		    total = $3,
-		    notes = $4
+		    notes = $3,
+	      date  = $4
 		WHERE
 		    id = $5`
+
 	_, err = tx.Exec(ctx, updateInvoiceQuery,
 		invoice.PersonID,
 		invoice.Type,
-		invoice.Total,
 		invoice.Notes,
+		invoice.Date,
 		id,
 	)
 	if err != nil {
-		tx.Rollback(ctx)
 		return err
 	}
 
-	// ✅ Track item IDs for deletion
 	itemIDs := make([]uuid.UUID, 0, len(invoice.Items))
 
 	for _, item := range invoice.Items {
 		if item.ID == uuid.Nil {
-			item.ID = uuid.New() // assign new ID if not provided
+			item.ID = uuid.New()
 		}
-		itemIDs = append(itemIDs, item.ID)
 
-		// ✅ UPSERT (insert or update on conflict)
+		itemIDs = append(itemIDs, item.ID)
+		fmt.Println(item.Discount.Value())
+
 		itemQuery := `
-			INSERT INTO invoice_items (id, invoice_id, description, price, product_id, count, total)
+			INSERT INTO invoice_items (id, invoice_id, description, price, product_id, count, discount)
 			    VALUES ($1, $2, $3, $4, $5, $6, $7)
 			ON CONFLICT (id)
 			    DO UPDATE SET
@@ -200,32 +361,30 @@ func (s *Service) EditInvoice(id string, invoice Invoice) error {
 			        price = EXCLUDED.price,
 			        product_id = EXCLUDED.product_id,
 			        count = EXCLUDED.count,
-			        total = EXCLUDED.total`
+			        discount = EXCLUDED.discount`
+
 		_, err = tx.Exec(ctx, itemQuery,
 			item.ID,
-			invoice.ID,
+			id,
 			item.Description,
 			item.Price,
 			item.ProductID,
 			item.Count,
-			item.Total,
+			item.Discount,
 		)
 		if err != nil {
-			tx.Rollback(ctx)
 			return err
 		}
 	}
 
-	// ✅ Delete items not in the new invoice
+	// ✅ Safer array comparison for empty slices
 	deleteQuery := `
 		DELETE FROM invoice_items
 		WHERE invoice_id = $1
-		    AND id NOT IN (
-		        SELECT
-		            UNNEST($2::UUID[]))`
-	_, err = tx.Exec(ctx, deleteQuery, invoice.ID, itemIDs)
+		    AND id != ALL($2::UUID[])`
+
+	_, err = tx.Exec(ctx, deleteQuery, id, itemIDs) // ✅ Changed from invoice.ID to id
 	if err != nil {
-		tx.Rollback(ctx)
 		return err
 	}
 
@@ -236,23 +395,11 @@ func (s *Service) DeleteInvoice(id string) error {
 	query := `
 		DELETE FROM invoices
 		WHERE id = $1`
+
 	_, err := s.db.Exec(context.Background(), query, id)
 	if err != nil {
 		return err
 	}
-	return nil
-}
-
-func (s *Service) AddInvoiceItem(ctx context.Context, item InvoiceItem) error {
-	// compute item.Total = Price * Count; update invoice total
 
 	return nil
-}
-
-func (s *Service) RemoveInvoiceItem(ctx context.Context, id int64) error {
-	return nil
-}
-
-func (s *Service) ListInvoiceItems(ctx context.Context, invoiceID int64) ([]InvoiceItem, error) {
-	return nil, nil
 }

@@ -29,6 +29,7 @@ type Category struct {
 	Show        bool        `json:"show"`
 	Children    []Child     `json:"children"`
 	Slug        pgtype.Text `json:"slug"`
+	TotalCount  int32       `json:"total_count"`
 	CreatedAt   time.Time   `json:"createdAt"`
 	UpdatedAt   time.Time   `json:"updatedAt"`
 }
@@ -161,17 +162,16 @@ type User struct {
 }
 
 type InvoiceItem struct {
-	ID          uuid.UUID `json:"id"`
-	InvoiceID   uuid.UUID `json:"invoiceId"`
-	ProductID   uuid.UUID `json:"productId"`
-	Price       int64     `json:"price"`
-	Discount    int64     `json:"discount"`
-	Count       int       `json:"count"`
-	Description string    `json:"description,omitempty"`
-	Total       int64     `json:"total"`
-	NetTotal    int64     `json:"netTotal"`
-	CreatedAt   time.Time `json:"createdAt"`
-	UpdatedAt   time.Time `json:"updatedAt"`
+	ID          uuid.UUID   `json:"id"`
+	InvoiceID   uuid.UUID   `json:"invoiceId"`
+	ProductID   uuid.UUID   `json:"productId"`
+	Price       pgtype.Text `json:"price"`
+	Discount    pgtype.Text `json:"discount"`
+	Count       pgtype.Text `json:"count"`
+	ProductName pgtype.Text `json:"productName"`
+	Description pgtype.Text `json:"description"`
+	CreatedAt   time.Time   `json:"createdAt"`
+	UpdatedAt   time.Time   `json:"updatedAt"`
 }
 
 type Invoice struct {
@@ -179,12 +179,11 @@ type Invoice struct {
 	PersonID   uuid.UUID     `json:"personId"`
 	PersonName pgtype.Text   `json:"personName"`
 	Type       string        `json:"type"`
-	Total      int64         `json:"total"`
-	Discount   int64         `json:"discount"`
-	NetTotal   int64         `json:"netTotal"`
+	Discount   pgtype.Text   `json:"discount"`
 	Notes      string        `json:"notes,omitempty"`
-	Number     int           `json:"number"`
+	Number     pgtype.Text   `json:"number"`
 	Items      []InvoiceItem `json:"items"`
+	Date       time.Time     `json:"date"`
 	CreatedAt  time.Time     `json:"createdAt"`
 	UpdatedAt  time.Time     `json:"updatedAt"`
 }
@@ -192,7 +191,7 @@ type Invoice struct {
 type Person struct {
 	ID          pgtype.UUID `json:"id"`
 	FirstName   pgtype.Text `json:"firstName"`
-	LastName    pgtype.Text `json:"lastName"`
+	Name        pgtype.Text `json:"name"`
 	Address     pgtype.Text `json:"address"`
 	PhoneNumber pgtype.Text `json:"phoneNumber"`
 	CreatedAt   time.Time   `json:"createdAt"`

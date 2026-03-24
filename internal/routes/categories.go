@@ -46,11 +46,20 @@ func GenerateCategoryRoutes(mainRouter *chi.Mux, service services.Service) {
 	})
 	mainRouter.With(middlewares.AdminOrReadOnly).Route("/categories", func(router chi.Router) {
 		router.Get("/", func(w http.ResponseWriter, r *http.Request) {
-			utils.ListFromQueryToResponse(service.ListCategories, r, w)
+			service.ListCategoriesWithSortFilterPagination(
+				utils.DefaultInput(r.URL.Query().Get("sort"), ""),
+				utils.DefaultInput(r.URL.Query().Get("sort_direction"), ""),
+				r.URL.Query()["filter"],
+				r.URL.Query()["filter_operand"],
+				r.URL.Query()["filter_condition"],
+				r.URL.Query().Get("count_in_page"),
+				r.URL.Query().Get("offset"),
+				w,
+			)
 		})
-
 		router.Get("/{id}", func(w http.ResponseWriter, r *http.Request) {
 			stringId := chi.URLParam(r, "id")
+
 			utils.ObjectFromQueryToResponse(service.GetCategory, r, w, stringId)
 		})
 
